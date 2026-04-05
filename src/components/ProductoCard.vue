@@ -50,7 +50,7 @@ defineEmits(['agregar', 'ver-imagen']);
   justify-content: space-between; /* Para que los botones siempre alineen abajo */
 }
 .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(219, 39, 119, 0.1); }
-
+/* Contenedor de imagen */
 .image-container { width: 100%; height: 180px; background: #f9fafb; border-radius: 12px; overflow: hidden; position: relative; display: flex; align-items: center; }
 .product-image { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; transition: transform 0.3s ease; }
 .product-card:hover .product-image { transform: scale(1.05); }

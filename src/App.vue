@@ -13,12 +13,46 @@
 
       <h2 class="section-title">Nuestro Catálogo</h2>
 
+      <section class="container mx-auto px-4 mt-4">
+        <div class="search-wrapper mb-6">
+          <input 
+            v-model="búsqueda" 
+            type="text" 
+            placeholder="¿Qué estás buscando hoy? ✨"
+            class="search-input w-full p-3 rounded-lg border shadow-sm"
+          />
+        </div>
+
+        <div class="categories-nav flex gap-3 overflow-x-auto pb-4 no-scrollbar">
+          <button 
+            v-for="cat in ['todos', 'maquillaje', 'carteras', 'lentes', 'perfumes']" 
+            :key="cat"
+            @click="categoriaSeleccionada = cat"
+            :class="['btn-category whitespace-nowrap px-6 py-2 rounded-full border',
+              { 'active': categoriaSeleccionada === cat }]"
+          >
+            {{ cat.charAt(0).toUpperCase() + cat.slice(1) }}
+          </button>
+        </div>
+      </section>
+
       <div class="container mx-auto mt-6">
-        <ListaProductos 
-          :productos="productos" 
-          @agregar="agregarAlCarrito" 
-          @ver-imagen="abrirVisor"
-        />
+        <div v-if="cargando" class="flex flex-col items-center justify-center py-20">
+          <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500 mb-4"></div>
+          <p class="text-pink-600 font-medium italic">Buscando lo mejor para vos...</p>
+        </div>
+
+        <div v-else>
+          <ListaProductos 
+            :productos="productosFiltrados"
+            @agregar="agregarAlCarrito" 
+            @ver-imagen="abrirVisor"
+          />
+          
+          <p v-if="productosFiltrados.length === 0" class="text-center py-10 text-gray-400">
+            No encontramos productos que coincidan. 
+          </p>
+        </div>
       </div>
     </main>
 
@@ -42,7 +76,7 @@
           <a href="https://www.instagram.com/beyou_sanra" target="_blank" class="footer-link-social">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
               <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.9 3.9 0 0 0-1.417.923A3.9 3.9 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.9 3.9 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.9 3.9 0 0 0-.923-1.417A3.9 3.9 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0zm-.003 1.444c2.134 0 2.387.008 3.23.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599s.453.546.598.92c.11.281.24.705.275 1.485.039.844.047 1.097.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.5 2.5 0 0 1-.599.919c-.28.28-.546.453-.92.598-.282.11-.705.24-1.485.276-.844.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.5 2.5 0 0 1-.92-.598 2.5 2.5 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233s.008-2.388.046-3.231c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92s.546-.453.92-.598c.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92m-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217m0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334"/>
-            </svg>  
+            </svg>   
             <span>@beyou_sanra</span>
           </a>
         </div>
@@ -108,7 +142,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { fetchProductos } from './services/productoService';
-//import { fetchProductos } from './services/sheetService';
 import NavBar from './components/NavBar.vue';
 import ListaProductos from './components/ListaProductos.vue';
 
@@ -120,15 +153,19 @@ const toast = ref({ show: false, msg: '' });
 const imgViewer = ref({ show: false, src: '', alt: '' });
 const búsqueda = ref('');
 const categoriaSeleccionada = ref('todos');
+const cargando = ref(true);
 
-// Lógica de filtrado reactiva
-const productosFiltrados = computed(() => {
-  return productos.value.filter(p => {
-    const coincideNombre = p.nombre.toLowerCase().includes(búsqueda.value.toLowerCase());
-    const coincideCategoria = categoriaSeleccionada.value === 'todos' || p.categoria === categoriaSeleccionada.value;
-    return coincideNombre && coincideCategoria;
-  });
+onMounted(async () => {
+  try {
+    cargando.value = true; // Aseguramos que empiece cargando
+    productos.value = await fetchProductos();
+  } catch (error) {
+    console.error("Error al traer productos:", error);
+  } finally {
+    cargando.value = false; // Pase lo que pase, al terminar ocultamos el spinner
+  }
 });
+
 
 // COMPUTADAS
 const totalItems = computed(() => Object.values(carrito.value).reduce((acc, item) => acc + item.cantidad, 0));
@@ -182,6 +219,18 @@ const vaciarCarrito = () => {
   }
 };
 
+// Lógica de filtrado reactiva ( computed)
+const productosFiltrados = computed(() => {
+  let filtrados = productos.value.filter(p => {
+    const coincideNombre = p.nombre.toLowerCase().includes(búsqueda.value.toLowerCase());
+    const coincideCategoria = categoriaSeleccionada.value === 'todos' || p.categoria === categoriaSeleccionada.value;
+    return coincideNombre && coincideCategoria;
+  });
+
+  // ORDEN ALFABÉTICO (A-Z)
+  return filtrados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+});
+
 const enviarPedido = () => {
   if (totalItems.value === 0) return;
   let msj = "%F0%9F%92%96%20%2A%20NUEVO%20PEDIDO%20-%20BE%20YOU%20TIENDA%20%2A%0A";
@@ -198,23 +247,22 @@ const enviarPedido = () => {
 </script>
 
 <style>
-/* USAMOS TUS ESTILOS DEL CSS ORIGINAL */
-
 :root { 
-  /* Tamaños base para mantener orden */
-  --text-xs: 0.75rem;   /* 12px */
-  --text-sm: 0.875rem;  /* 14px */
-  --text-base: 1rem;    /* 16px */
-  --text-lg: 1.125rem;  /* 18px */
-  --text-xl: 1.25rem;   /* 20px */
-  --text-2xl: 1.5rem;   /* 24px */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
   --pink-primary: #db2777; 
   --pink-dark: #9d174d; 
-  --pink-light: #fdf2f8; }
+  --pink-light: #fdf2f8; 
+}
 
+/* --- BANNER (Mantiene bordes y estilo intacto) --- */
 .hero-banner {
   background: linear-gradient(135deg, #9d174d 0%, #db2777 100%);
-  padding: 2.5rem 1.5rem;
+  padding: 3rem 1.5rem;
   text-align: center;
   color: white;
   border-radius: 0 0 40px 40px;
@@ -223,107 +271,225 @@ const enviarPedido = () => {
 }
 .hero-content h1 { 
   font-family: 'Playfair Display', serif; 
-  font-size: 2.2rem; 
-  margin-bottom: 0.2rem;
- }
-
- .hero-content p {
-    font-weight: 200;
-    font-size: 1rem;
-    opacity: 0.9;
-    margin-bottom: 0.5rem;
+  font-size: clamp(1.8rem, 5vw, 2.5rem); /* Ajuste fluido para móviles */
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
 }
-
-.hero-badge { display: inline-block; 
+.hero-content p {
+  font-weight: 300;
+  font-size: 1rem;
+  opacity: 0.95;
+  margin-bottom: 1rem;
+}
+.hero-badge { 
+  display: inline-block; 
   background: rgba(255, 255, 255, 0.2); 
-  backdrop-filter: blur(5px); 
-  padding: 6px 15px; 
+  backdrop-filter: blur(8px); 
+  padding: 8px 18px; 
   border-radius: 50px; 
-  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border: 1px solid rgba(255, 255, 255, 0.3);
- }
-
-.section-title { text-align: center; font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--pink-primary); margin: 2rem 0; }
-
-.modal, .image-viewer-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(6px); }
-.modal.show, .image-viewer-modal.show { display: flex; }
-.modal-content { background: white; padding: 25px; border-radius: 24px; width: 90%; max-width: 420px; position: relative; }
-
-.image-viewer-modal img { max-width: 90%; max-height: 80vh; border-radius: 12px; }
-.close-viewer { position: absolute; top: 15px; right: 20px; font-size: 30px; cursor: pointer; color: white; }
-.close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #9ca3af; }
-
-.btn-qty { background: var(--pink-light); color: var(--pink-primary); border: 1px solid #fbcfe8; width: 30px; height: 30px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-.btn-whatsapp { background: #25d366; color: white; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; transition: transform 0.2s ease; }
-
-.main-footer { 
-  background-color: rgb(244, 201, 235); 
-  padding: 3rem 1rem 1.5rem 1rem; 
-  margin-top: 4rem; 
-  width: 100%; 
+  font-size: 0.75rem; 
+  text-transform: uppercase; 
+  letter-spacing: 1px; 
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/* --- BARRA DE BÚSQUEDA --- */
+.search-wrapper { 
+  position: relative; 
+  max-width: 600px; 
+  margin: 0 auto 3rem auto; /* Aumentamos margen inferior */
+  padding: 0 1rem;
+}
+.search-input { 
+  width: 100%; 
+  padding: 16px 24px; 
+  border-radius: 50px; 
+  border: 2px solid #fdf2f8; 
+  background: white; 
+  font-family: 'Poppins', sans-serif; 
+  font-size: 1rem; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+  transition: all 0.3s ease;
+}
+.search-input:focus { 
+  outline: none; 
+  border-color: var(--pink-primary); 
+  box-shadow: 0 4px 15px rgba(219, 39, 119, 0.12); 
+}
+
+/* --- FILTROS DE CATEGORÍAS (Optimización Scroll) --- */
+.categories-nav {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 0.5rem 1rem 1.5rem 1rem; /* Más aire abajo */
+  margin-top: 1rem;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.categories-nav::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.btn-category { 
+  padding: 12px 26px;
+  border-radius: 50px;
+  border: 1px solid #f3f4f6;
+  background: white;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap; 
+  cursor: pointer;
+  flex-shrink: 0; 
+  transition: all 0.25s ease; 
+}
+.btn-category:hover { background: var(--pink-light); color: var(--pink-primary); }
+.btn-category.active { 
+  background: var(--pink-primary); 
+  color: white; 
+  border-color: var(--pink-primary); 
+  box-shadow: 0 6px 12px rgba(219, 39, 119, 0.2); 
+}
+
+/* --- TÍTULOS Y CONTENEDORES --- */
+.section-title { 
+  text-align: center; 
+  font-family: 'Playfair Display', serif; 
+  font-size: 1.8rem; 
+  color: var(--pink-primary); 
+  margin: 3.5rem 0 2rem 0; /* Bajamos el título del catálogo */
+}
+
+/* --- MODALES Y VISOR --- */
+.modal, .image-viewer-modal { 
+  position: fixed; 
+  inset: 0; 
+  background: rgba(0,0,0,0.85); 
+  display: none; 
+  align-items: center; 
+  justify-content: center; 
+  z-index: 2000; 
+  backdrop-filter: blur(8px); 
+}
+.modal.show, .image-viewer-modal.show { display: flex; }
+.modal-content { 
+  background: white; 
+  padding: 30px; 
+  border-radius: 28px; 
+  width: 92%; 
+  max-width: 440px; 
+  position: relative; 
+}
+.image-viewer-modal img { 
+  max-width: 95%; 
+  max-height: 85vh; 
+  border-radius: 16px; 
+  object-fit: contain; 
+}
+
+/* --- BOTONES Y UI --- */
+.btn-qty { 
+  background: var(--pink-light); 
+  color: var(--pink-primary); 
+  border: 1px solid #fbcfe8; 
+  width: 32px; 
+  height: 32px; 
+  border-radius: 10px; 
+  font-weight: bold; 
+}
+.btn-whatsapp { 
+  background: #25d366; 
+  color: white; 
+  width: 100%; 
+  padding: 16px; 
+  border-radius: 14px; 
+  font-weight: 700; 
+  border: none; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 10px; 
+  transition: transform 0.2s ease; 
+}
+
+/* --- FOOTER OPTIMIZADO --- */
+.main-footer { 
+  background-color: rgb(244, 201, 235); /* Un rosado más suave y limpio */
+  padding: 4rem 1.5rem 2rem 1.5rem; 
+  margin-top: 5rem; 
+}
 .footer-grid { 
   max-width: 1100px; 
   margin: 0 auto; 
   display: grid; 
   grid-template-columns: 1fr; 
-  gap: 2.5rem; 
-  text-align: center; 
+  gap: 3rem; 
 }
-
 @media (min-width: 768px) { 
-  .footer-grid { grid-template-columns: repeat(3, 1fr); 
-    text-align: left; 
-  } 
+  .footer-grid { grid-template-columns: repeat(3, 1fr); text-align: left; } 
 }
-
 .footer-heading { 
   font-weight: 800; 
-  color: #374151; 
+  color: #1f2937; 
   text-transform: uppercase; 
-  font-size: 0.8rem; 
-  letter-spacing: 0.1em; 
-  margin-bottom: 1rem; 
+  font-size: 0.75rem; 
+  letter-spacing: 0.12em; 
+  margin-bottom: 1.2rem; 
 }
-
 .footer-text, .footer-list li { 
-  font-size: 0.85rem; 
-  color: #494a4d; 
-  line-height: 1.6; 
-  margin-bottom: 8px; 
+  font-size: 0.9rem; 
+  color: #4b5563; 
+  line-height: 1.7; 
 }
-
-.footer-list { list-style: none; 
-  padding: 0; 
-}
-
 .footer-link-social {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: #494a4d;
+  gap: 10px;
+  color: #db2777;
+  font-weight: 600;
   text-decoration: none;
-  margin-top: 10px;
+  margin-top: 1rem;
 }
-@media (min-width: 768px) { 
-  .footer-link-social { 
-    justify-content: flex-start; 
-  } 
-}
-
 .footer-bottom { 
-  border-top: 1px solid rgba(0,0,0,0.05); 
-  margin-top: 2.5rem; 
+  border-top: 1px solid rgba(219, 39, 119, 0.1); 
+  margin-top: 3rem; 
   padding-top: 1.5rem; 
   text-align: center; 
-  color: #374151; 
-  font-size: 0.7rem; 
+  color: #4b5563; 
+  font-size: 0.75rem; 
 }
 
-#toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 12px 24px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 3000; pointer-events: none; }
+/* --- ELEMENTOS FLOTANTES --- */
+#toast { 
+  position: fixed; 
+  bottom: 30px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  background: #1f2937; 
+  color: white; 
+  padding: 14px 28px; 
+  border-radius: 50px; 
+  opacity: 0; 
+  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+  z-index: 3000; 
+}
 #toast.show { opacity: 1; bottom: 50px; }
 
-.whatsapp-float { position: fixed; width: 60px; height: 60px; bottom: 25px; right: 25px; background: #25d366; color: white; border-radius: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 2px 2px 10px rgba(0,0,0,0.2); z-index: 1000; }
+.whatsapp-float { 
+  position: fixed; 
+  width: 60px; 
+  height: 60px; 
+  bottom: 25px; 
+  right: 25px; 
+  background: #25d366; 
+  color: white; 
+  border-radius: 50px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3); 
+  z-index: 1000; 
+  transition: transform 0.3s ease;
+}
+.whatsapp-float:hover { transform: scale(1.1); }
 </style>
