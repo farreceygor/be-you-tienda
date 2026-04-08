@@ -1,39 +1,65 @@
 <template>
   <div v-if="usuarioLogueado" class="admin-container min-h-screen bg-[#f9fafb] pb-20">
     
-    <header class="admin-header">
-      <div class="logo-wrapper">
-        <div class="logo-placeholder">BY</div> 
-        <h1>Panel de Gestión <span>Be You</span></h1>
+    <header class="admin-header relative flex flex-col items-center">
+      <div class="mb-2">
+        <img 
+          src="https://abhcuuyqxyjmunfaosah.supabase.co/storage/v1/object/public/public-assets/logo.jpeg" 
+          alt="Logo Be You" 
+          class="w-14 h-14 rounded-full object-cover border-2 border-red-50 shadow-sm mx-auto"
+        />
       </div>
-      <button @click="cerrarSesion" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition text-xs font-bold uppercase tracking-widest">
+
+      <div class="logo-wrapper">
+        <h1 class="text-xl font-bold text-gray-800">
+          Panel de Gestión <span class="text-red-500">Be You</span>
+        </h1>
+      </div>
+
+      <button 
+        @click="cerrarSesion" 
+        class="absolute top-4 right-4 text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest transition"
+      >
         Salir 🚪
       </button>
-    </header>
+  </header>
 
     <main class="max-w-2xl mx-auto px-4 mt-6">
       
-      <div class="flex gap-2 mb-8 bg-gray-100 p-2 rounded-2xl overflow-x-auto no-scrollbar">
-        <button @click="vistaActual = 'productos'" 
-          :class="['flex-1 py-3 px-4 rounded-xl font-bold transition text-sm whitespace-nowrap', vistaActual === 'productos' ? 'bg-red-500 text-white shadow-md' : 'text-gray-500']">
-          🛍️ Cargar
-        </button>
+      <div class="flex gap-3 mb-8 bg-gray-100 p-2 rounded-2xl overflow-x-auto no-scrollbar snap-x snap-mandatory">
+  
+  <button 
+    @click="cambiarVista($event, 'productos')" 
+    :class="['min-w-[110px] flex-shrink-0 py-3 px-4 rounded-xl font-bold transition text-sm snap-start', 
+             vistaActual === 'productos' ? 'bg-red-500 text-white shadow-md' : 'text-gray-500']"
+  >
+    🛍️ Cargar
+  </button>
 
-        <button @click="vistaActual = 'inventario'" 
-          :class="['flex-1 py-3 px-4 rounded-xl font-bold transition text-sm whitespace-nowrap', vistaActual === 'inventario' ? 'bg-red-500 text-white shadow-md' : 'text-gray-500']">
-          📋 Lista
-        </button>
+  <button 
+    @click="cambiarVista($event, 'inventario')" 
+    :class="['min-w-[110px] flex-shrink-0 py-3 px-4 rounded-xl font-bold transition text-sm snap-start', 
+             vistaActual === 'inventario' ? 'bg-red-500 text-white shadow-md' : 'text-gray-500']"
+  >
+    📋 Lista
+  </button>
 
-        <button @click="vistaActual = 'categorias'" 
-          :class="['flex-1 py-3 px-4 rounded-xl font-bold transition text-sm whitespace-nowrap', vistaActual === 'categorias' ? 'bg-red-500 text-white shadow-md' : 'text-gray-500']">
-          ✨ Secciones
-        </button>
+  <button 
+    @click="cambiarVista($event, 'categorias')" 
+    :class="['min-w-[110px] flex-shrink-0 py-3 px-4 rounded-xl font-bold transition text-sm snap-start', 
+             vistaActual === 'categorias' ? 'bg-red-500 text-white shadow-md' : 'text-gray-500']"
+  >
+    ✨ Secciones
+  </button>
 
-        <button @click="vistaActual = 'preview'" 
-          :class="['flex-1 py-3 px-4 rounded-xl font-bold transition text-sm whitespace-nowrap', vistaActual === 'preview' ? 'bg-gray-800 text-white shadow-md' : 'text-gray-500']">
-          👁️ Ver Tienda
-        </button>
-      </div>
+  <button 
+    @click="cambiarVista($event, 'preview')" 
+    :class="['min-w-[110px] flex-shrink-0 py-3 px-4 rounded-xl font-bold transition text-sm snap-start', 
+             vistaActual === 'preview' ? 'bg-red-500 text-white shadow-md' : 'text-gray-500']"
+  >
+    👁️ Ver Tienda
+  </button>
+</div>
 
       <div v-if="vistaActual === 'categorias'" class="fade-in card-form bg-white rounded-3xl p-6 shadow-sm mb-6 border-l-4 border-red-500">
         <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Nueva Sección</h3>
@@ -48,11 +74,18 @@
           <div class="grid grid-cols-1 gap-2">
             <div v-for="cat in categorias" :key="cat.id" class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
               <span class="font-medium text-gray-700">{{ cat.nombre }}</span>
-              <button @click="eliminarCategoria(cat)" class="text-red-400 hover:text-red-600 p-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+              <div class="flex gap-2">
+                <button @click="prepararEdicionCategoria(cat)" class="text-blue-400 hover:text-blue-600 p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <button @click="eliminarCategoria(cat)" class="text-red-400 hover:text-red-600 p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -64,23 +97,51 @@
         </h2>
         <form @submit.prevent="guardarProducto" class="space-y-5">
           <div>
-            <label class="label-admin">Nombre del producto</label>
-            <input type="text" v-model="nuevoProducto.nombre" placeholder="Ej: Labial Matte Red" class="input-admin" required />
+           <label for="prod-nombre" class="label-admin">Nombre del producto</label>
+            <input 
+              id="prod-nombre" 
+              name="nombre" 
+              type="text" 
+              v-model="nuevoProducto.nombre" 
+              class="input-admin" 
+              required 
+            />
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="label-admin">Precio ($)</label>
-              <input type="number" v-model="nuevoProducto.precio" placeholder="0.00" class="input-admin" required />
+              <label for="prod-precio" class="label-admin">Precio ($)</label>
+              <input 
+                id="prod-precio" 
+                name="precio" 
+                type="number" 
+                v-model="nuevoProducto.precio" 
+                class="input-admin" 
+                required 
+              />
             </div>
-            <div>
-              <label class="label-admin">Stock disponible</label>
-              <input type="number" v-model="nuevoProducto.stock" placeholder="10" class="input-admin" required />
-            </div>
-          </div>
           <div>
-            <label class="label-admin">Categoría</label>
-            <select v-model="nuevoProducto.categoria_id" class="input-admin bg-white">
-              <option v-for="cat in categorias" :key="cat.id" :value="cat.id">{{ cat.nombre }}</option>
+            <label for="prod-stock" class="label-admin">Stock disponible</label>
+            <input 
+              id="prod-stock" 
+              name="stock" 
+              type="number" 
+              v-model="nuevoProducto.stock" 
+              class="input-admin" 
+              required 
+            />
+          </div>
+        </div>
+          <div>
+            <label for="prod-categoria" class="label-admin">Categoría</label>
+            <select 
+              id="prod-categoria" 
+              name="categoria" 
+              v-model="nuevoProducto.categoria_id" 
+              class="input-admin bg-white"
+            >
+              <option v-for="cat in categorias" :key="cat.id" :value="cat.id">
+                {{ cat.nombre }}
+              </option>
             </select>
           </div>
           <div class="image-upload-zone">
@@ -142,18 +203,40 @@
 
   <div v-else class="min-h-screen flex items-center justify-center bg-[#f9fafb] px-4">
     <div class="max-w-md w-full bg-white p-8 rounded-[2.5rem] shadow-2xl border border-gray-100 fade-in">
-      <div class="logo-placeholder">BY</div>
+      <img 
+      src="https://abhcuuyqxyjmunfaosah.supabase.co/storage/v1/object/public/public-assets/logo.jpeg" 
+      alt="Be You Logo" 
+      class="w-20 h-20 rounded-full mx-auto mb-4 object-cover border-2 border-red-50"
+    />
       <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">Acceso Privado</h2>
       <p class="text-center text-gray-400 text-sm mb-8">Gestión de Inventario Be You</p>
       
       <form @submit.prevent="iniciarSesion" class="space-y-4">
         <div>
-          <label class="label-admin">Correo Electrónico</label>
-          <input v-model="email" type="email" class="input-admin" placeholder="admin@beyou.com" required />
+          <label for="email-login" class="label-admin">Correo Electrónico</label>
+          <input
+          id="email-login" 
+          name="email"
+          v-model="email" 
+          type="email" 
+          placeholder="admin@beyou.com"
+          class="input-admin" 
+          autocomplete="username" 
+          required
+          />
         </div>
         <div>
-          <label class="label-admin">Contraseña</label>
-          <input v-model="password" type="password" class="input-admin" placeholder="••••••••" required />
+          <label for="pass-login" class="label-admin">Contraseña</label>
+          <input
+            id="pass-login" 
+            name="password"
+            v-model="password" 
+            type="password" 
+            placeholder="••••••••"
+            class="input-admin" 
+            autocomplete="current-password" 
+            required 
+          />
         </div>
         <p v-if="errorLogin" class="text-red-500 text-xs text-center font-bold animate-pulse">{{ errorLogin }}</p>
         <button type="submit" class="btn-save-admin" :disabled="cargando">
@@ -188,6 +271,7 @@ const vistaActual = ref('inventario');
 const productosCargados = ref([]);
 const editandoId = ref(null); 
 const textoBusqueda = ref('');
+const editandoCatId = ref(null); // Para saber qué categoría editamos
 
 const nuevoProducto = ref({
   nombre: '',
@@ -283,8 +367,8 @@ const guardarProducto = async () => {
     
     const datosFinales = {
       nombre: nuevoProducto.value.nombre,
-      precio: nuevoProducto.value.precio,
-      stock: nuevoProducto.value.stock,
+      precio: Number(nuevoProducto.value.precio),
+      stock: Number(nuevoProducto.value.stock),
       categoria_id: nuevoProducto.value.categoria_id,
       imagen_url: url
     };
@@ -304,7 +388,8 @@ const guardarProducto = async () => {
     limpiarFormulario();
     await cargarInventario(); 
   } catch (error) {
-    alert("Error al procesar ❌");
+    console.error("DETALLE DEL ERROR:", error);
+    alert("Error al procesar ❌: " + (error.message || "Error desconocido"));
   } finally {
     cargando.value = false;
   }
@@ -320,12 +405,31 @@ const prepararEdicion = (producto) => {
 
 const eliminarProducto = async (producto) => {
   if (confirm(`¿Eliminar "${producto.nombre}"?`)) {
+    cargando.value = true;
     try {
+      // 1. Extraer el nombre del archivo de la URL
+      // Ejemplo URL: .../storage/v1/object/public/productos-img/nombre-foto.jpg
+      const partes = producto.imagen_url.split('/');
+      const nombreArchivo = partes[partes.length - 1];
+
+      // 2. Borrar del Storage
+      const { error: errorStorage } = await supabase.storage
+        .from('productos-img')
+        .remove([nombreArchivo]);
+      
+      if (errorStorage) console.warn("No se pudo borrar la imagen física, pero procedemos a borrar el registro.");
+
+      // 3. Borrar de la base de datos
       const { error } = await supabase.from('productos').delete().eq('id', producto.id);
+      
       if (error) throw error;
+      
+      alert("✅ Producto e imagen eliminados");
       await cargarInventario();
     } catch (error) {
       alert("Error al eliminar ❌");
+    } finally {
+      cargando.value = false;
     }
   }
 };
@@ -336,15 +440,37 @@ const guardarCategoria = async () => {
   cargando.value = true;
   try {
     const slug = nuevaCatNombre.value.toLowerCase().trim().replace(/\s+/g, '-');
-    const { error } = await supabase.from('categorias').insert([{ nombre: nuevaCatNombre.value, slug }]);
-    if (error) throw error;
+    
+    if (editandoCatId.value) {
+      // MODO EDICIÓN
+      const { error } = await supabase
+        .from('categorias')
+        .update({ nombre: nuevaCatNombre.value, slug })
+        .eq('id', editandoCatId.value);
+      if (error) throw error;
+      alert("✅ Sección actualizada");
+    } else {
+      // MODO CREACIÓN
+      const { error } = await supabase
+        .from('categorias')
+        .insert([{ nombre: nuevaCatNombre.value, slug }]);
+      if (error) throw error;
+    }
+
     nuevaCatNombre.value = '';
+    editandoCatId.value = null; // Limpiamos el modo edición
     categorias.value = await fetchCategorias(); 
   } catch (error) {
-    alert("Error al crear categoría");
+    alert("Error al procesar categoría ❌");
   } finally {
     cargando.value = false;
   }
+};
+
+// Función para cargar los datos en el input
+const prepararEdicionCategoria = (cat) => {
+  editandoCatId.value = cat.id;
+  nuevaCatNombre.value = cat.nombre;
 };
 
 const eliminarCategoria = async (cat) => {
@@ -391,6 +517,19 @@ watch(vistaActual, (nuevaVista) => {
     cargarInventario();
   }
 });
+
+const cambiarVista = (event, vista) => {
+  vistaActual.value = vista;
+  
+  // El 'event.currentTarget' es el botón que tocamos
+  if (event) {
+    event.currentTarget.scrollIntoView({
+      behavior: 'smooth', // Movimiento fluido
+      inline: 'center',   // Lo centra en la pantalla
+      block: 'nearest'    // Evita que la página suba o baje
+    });
+  }
+};
 </script>
 
 <style scoped>
