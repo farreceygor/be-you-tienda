@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Secretos de Supabase
+.env
+.env.production
+.env.local
