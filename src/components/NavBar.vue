@@ -5,7 +5,7 @@
         <img src="https://abhcuuyqxyjmunfaosah.supabase.co/storage/v1/object/public/public-assets/logo.jpeg" alt="Be You Logo" class="brand-logo">
         <div class="brand-text">
           <span class="brand-title">Be You Tienda</span>
-          <span class="brand-subtitle">beauty & care</span>
+          <span class="brand-subtitle">Maquillaje & Accesorios</span>
         </div>
       </div>
 
