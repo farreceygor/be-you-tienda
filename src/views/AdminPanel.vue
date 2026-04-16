@@ -335,9 +335,27 @@ const iniciarSesion = async () => {
 };
 
 const cerrarSesion = async () => {
-  await supabase.auth.signOut();
-  usuarioLogueado.value = null;
+  try {
+    await supabase.auth.signOut();
+    usuarioLogueado.value = null; // Esto disparará el watch automáticamente
+  } catch (error) {
+    console.error("Error al cerrar sesión:", error);
+  }
 };
+watch(usuarioLogueado, (nuevoEstado) => {
+  if (!nuevoEstado) {
+    // Limpiamos los campos del formulario
+    email.value = '';
+    password.value = '';
+    errorLogin.value = '';
+
+    // Limpiamos los datos cargados para que no queden en memoria
+    productosCargados.value = [];
+    ventasCargadas.value = [];
+    
+    console.log("Estado de Admin limpiado con éxito ✨");
+  }
+});
 
 // --- 4. GESTIÓN DE PRODUCTOS ---
 
