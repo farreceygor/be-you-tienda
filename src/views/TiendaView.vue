@@ -206,13 +206,16 @@ const productosFiltrados = computed(() => {
       // 1. Filtro por nombre
       const coincideNombre = p.nombre.toLowerCase().includes(búsqueda.value.toLowerCase());
       
-      // 2. Filtro por categoría (Nombre vs Nombre)
+      // 2. Filtro por categoría revisando el objeto relacionado de Supabase
+      // Accedemos a p.categorias.nombre que es lo que trae el JOIN de Supabase
+      const nombreCatProducto = p.categorias?.nombre || '';
+      
       const coincideCategoria = categoriaSeleccionada.value === 'todos' || 
-                                (p.categoria && p.categoria.toLowerCase() === categoriaSeleccionada.value.toLowerCase());
+                                 nombreCatProducto.toLowerCase() === categoriaSeleccionada.value.toLowerCase();
       
       return coincideNombre && coincideCategoria;
     })
-    .sort((a, b) => a.nombre.localeCompare(b.nombre)); // El orden va AQUÍ adentro
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 });
 
 // --- MÉTODOS DE PRODUCTOS Y CARRITO ---

@@ -34,10 +34,7 @@ export const fetchCategorias = async () => {
 export const fetchProductos = async () => {
   const { data, error } = await supabase
     .from('productos')
-    .select(`
-      *,
-      categorias ( nombre, slug )
-    `)
+    .select(`*,categorias( nombre, slug )`)
     .order('id', { ascending: true });
 
   if (error) throw error;
