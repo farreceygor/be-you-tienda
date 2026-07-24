@@ -14,29 +14,15 @@ export function useProductos() {
   const busqueda        = ref('')
   const categoriaActiva = ref('todos')
 
-  // ─── MAPA DE EMOJIS ──────────────────────────────────────────────
-  // Centralizamos acá — si agregás categorías desde el admin,
-  // solo tenés que agregar el emoji en este objeto
-  const emojiMap = {
-    'todos':'🌟',
-    'maquillaje':'💄',
-    'joyas':'👁️',
-    'base':'✨',
-    'perfumes':'🌸',
-    'regaleria':'🎁',
-    'cuidado':'💅',
-    'joyas ':'💍',
-    'accesorios ':'🧴',
-  }
-
   // ─── COMPUTADAS ──────────────────────────────────────────────────
   const categoriasConTodos = computed(() => [
-    { id: 'todos', nombre: 'todos', emoji: '🌟' },
-    ...categorias.value.map(c => ({
-      ...c,
-      emoji: emojiMap[c.nombre.toLowerCase()] || '✨'
-    }))
-  ])
+  { id: 'todos', nombre: 'todos', emoji: '🌟' },
+  ...categorias.value.map(c => ({
+    ...c,
+    // Usa el emoji de Supabase, con fallback por si alguna no tiene
+    emoji: c.emoji || '✨'
+  }))
+])
 
   const productosFiltrados = computed(() => {
     let lista = productos.value

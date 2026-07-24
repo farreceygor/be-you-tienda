@@ -210,17 +210,36 @@
         </div>
 
         <div class="form-card" style="margin-bottom: 16px;">
-          <h3 class="form-card__title">{{ editandoCatId ? 'Editar categoría' : 'Nueva categoría' }}</h3>
-          <div class="cat-nueva">
-            <input v-model="nuevaCatNombre" type="text" placeholder="Ej: Accesorios" :disabled="cargando" />
-            <button @click="guardarCategoria" class="btn-primary" :disabled="cargando">
-              {{ cargando ? '...' : (editandoCatId ? 'Actualizar' : 'Agregar') }}
-            </button>
-            <button v-if="editandoCatId" @click="editandoCatId = null; nuevaCatNombre = ''" class="btn-ghost">
-              Cancelar
-            </button>
-          </div>
-        </div>
+  <h3 class="form-card__title">{{ editandoCatId ? 'Editar categoría' : 'Nueva categoría' }}</h3>
+  <div class="cat-nueva">
+    <input
+      v-model="nuevaCatNombre"
+      type="text"
+      placeholder="Ej: Accesorios"
+      :disabled="cargando"
+    />
+    <!-- Selector de emoji -->
+    <select v-model="nuevaCatEmoji" class="cat-emoji-select">
+      <option v-for="e in emojisDisponibles" :key="e.valor" :value="e.valor">
+        {{ e.valor }} {{ e.label }}
+      </option>
+    </select>
+    <button @click="guardarCategoria" class="btn-primary" :disabled="cargando">
+      {{ cargando ? '...' : (editandoCatId ? 'Actualizar' : 'Agregar') }}
+    </button>
+    <button
+      v-if="editandoCatId"
+      @click="editandoCatId = null; nuevaCatNombre = ''; nuevaCatEmoji = '✨'"
+      class="btn-ghost"
+    >
+      Cancelar
+    </button>
+  </div>
+  <!-- Preview -->
+  <p class="cat-preview">
+    Vista previa: <strong>{{ nuevaCatEmoji }} {{ nuevaCatNombre || 'Nombre' }}</strong>
+  </p>
+</div>
 
         <div class="tabla-wrap">
           <table class="tabla">
@@ -232,15 +251,17 @@
                 <td colspan="3" class="tabla__empty">Sin categorías</td>
               </tr>
               <tr v-for="cat in categorias" :key="cat.id">
-                <td><strong>{{ cat.nombre }}</strong></td>
-                <td class="td-mid">{{ cat.slug }}</td>
-                <td>
-                  <div class="acciones">
-                    <button class="accion-btn accion-btn--edit" @click="prepararEdicionCategoria(cat)">✏️</button>
-                    <button class="accion-btn accion-btn--del" @click="eliminarCategoria(cat)">🗑️</button>
-                  </div>
-                </td>
-              </tr>
+  <td>
+    <strong>{{ cat.emoji }} {{ cat.nombre }}</strong>
+  </td>
+  <td class="td-mid hide-sm">{{ cat.slug }}</td>
+  <td>
+    <div class="acciones">
+      <button class="accion-btn accion-btn--edit" @click="prepararEdicionCategoria(cat)">✏️</button>
+      <button class="accion-btn accion-btn--del" @click="eliminarCategoria(cat)">🗑️</button>
+    </div>
+  </td>
+</tr>
             </tbody>
           </table>
         </div>
@@ -578,6 +599,30 @@ function previsualizarImagen(e) {
 // ─── CATEGORÍAS ───────────────────────────────────────────────────
 const nuevaCatNombre = ref('')
 const editandoCatId  = ref(null)
+const nuevaCatEmoji  = ref('✨')
+const emojisDisponibles = [
+  { valor: '✨', label: 'Destellos' },
+  { valor: '💄', label: 'Labial' },
+  { valor: '👁️', label: 'Ojos' },
+  { valor: '🌸', label: 'Flor' },
+  { valor: '🎁', label: 'Regalo' },
+  { valor: '💅', label: 'Uñas' },
+  { valor: '💍', label: 'Anillo' },
+  { valor: '🧴', label: 'Cuidado' },
+  { valor: '👜', label: 'Cartera' },
+  { valor: '🪞', label: 'Espejo' },
+  { valor: '🧖', label: 'Spa' },
+  { valor: '🛍️', label: 'Accesorio' },
+  { valor: '💋', label: 'Beso' },
+  { valor: '🌺', label: 'Flor 2' },
+  { valor: '🎀', label: 'Moño' },
+  { valor: '🌟', label: 'Estrella' },
+  { valor: '🕶️', label: 'Lentes' },
+  { valor: '❄️', label: 'Invierno' },
+  { valor: '☀️', label: 'Verano' },
+  { valor: '👝', label: 'Billetera' },
+  { valor: '💎', label: 'Diamante' },
+]
 
 async function guardarCategoria() {
   if (!nuevaCatNombre.value.trim()) return
@@ -585,21 +630,28 @@ async function guardarCategoria() {
   const slug = nuevaCatNombre.value.toLowerCase().trim().replace(/\s+/g, '-')
   try {
     if (editandoCatId.value) {
-      await supabase.from('categorias').update({ nombre: nuevaCatNombre.value, slug }).eq('id', editandoCatId.value)
+      await supabase
+        .from('categorias')
+        .update({ nombre: nuevaCatNombre.value, slug, emoji: nuevaCatEmoji.value })
+        .eq('id', editandoCatId.value)
     } else {
-      await supabase.from('categorias').insert([{ nombre: nuevaCatNombre.value, slug }])
+      await supabase
+        .from('categorias')
+        .insert([{ nombre: nuevaCatNombre.value, slug, emoji: nuevaCatEmoji.value }])
     }
     nuevaCatNombre.value = ''
-    editandoCatId.value = null
-    categorias.value = await fetchCategorias()
+    nuevaCatEmoji.value  = '✨'
+    editandoCatId.value  = null
+    categorias.value     = await fetchCategorias()
     mostrarToast('✅ Categoría guardada')
   } catch { mostrarToast('❌ Error al guardar categoría') }
   finally { cargando.value = false }
 }
 
 function prepararEdicionCategoria(cat) {
-  editandoCatId.value = cat.id
+  editandoCatId.value  = cat.id
   nuevaCatNombre.value = cat.nombre
+  nuevaCatEmoji.value  = cat.emoji || '✨'
 }
 
 async function eliminarCategoria(cat) {
@@ -999,9 +1051,42 @@ onMounted(async () => {
 .upload-zone__preview { width: 100%; max-height: 180px; object-fit: contain; }
 
 /* ─── CATEGORÍAS ─── */
-.cat-nueva { display: flex; gap: 8px; flex-wrap: wrap; }
-.cat-nueva input { flex: 1; min-width: 160px; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; }
+.cat-nueva {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cat-nueva input {
+  flex: 1;
+  min-width: 140px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+}
 .cat-nueva input:focus { outline: none; border-color: var(--rose); }
+.cat-emoji-select {
+  padding: 9px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--white);
+  cursor: pointer;
+  min-width: 130px;
+}
+.cat-emoji-select:focus { outline: none; border-color: var(--rose); }
+.cat-preview {
+  font-size: 12px;
+  color: var(--mid);
+  margin-top: 10px;
+}
+.cat-preview strong {
+  color: var(--charcoal);
+  font-size: 14px;
+}
 
 /* ─── INFO CARD ─── */
 .info-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; font-size: 14px; line-height: 1.6; color: var(--mid); }
@@ -1048,4 +1133,5 @@ onMounted(async () => {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
 </style>
