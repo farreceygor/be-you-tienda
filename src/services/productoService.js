@@ -60,36 +60,7 @@ export const crearProducto = async (producto) => {
  */
 
 // 1. Registrar una venta nueva
-export const registrarVenta = async (producto, cantidad) => {
-  try {
-    // Insertar el registro de la venta (usamos el precio que viene del modal)
-    const { error: errorVenta } = await supabase
-      .from('ventas')
-      .insert([{
-        producto_id: producto.id,
-        nombre_producto: producto.nombre,
-        cantidad: cantidad,
-        precio_unitario: producto.precio,
-        total: producto.precio * cantidad
-      }]);
 
-    if (errorVenta) throw errorVenta;
-
-    // Actualizar el stock
-    const nuevoStock = producto.stock - cantidad;
-    const { error: errorStock } = await supabase
-      .from('productos')
-      .update({ stock: nuevoStock })
-      .eq('id', producto.id);
-
-    if (errorStock) throw errorStock;
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error en registrarVenta:", error);
-    throw error;
-  }
-};
 
 // 2. Traer historial de ventas (para el Panel de Estadísticas)
 export const fetchVentas = async () => {
@@ -150,3 +121,361 @@ export const eliminarVenta = async (venta) => {
     throw error;
   }
 };
+// ═══════════════════════════════════════════════════════════════
+// SECCIÓN: PEDIDOS (nuevo módulo de cobranza)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Crea un pedido completo con sus items en una sola operación.
+ * 
+ * Recibe:
+ *   - datosPedido: { cliente, telefono, metodo_pago, estado, notas, total }
+ *   - items: [{ producto_id, nombre, cantidad, precio_unit, subtotal }]
+ * 
+ * El proceso es:
+ *   1. Inserta la cabecera en `pedidos` y obtiene el id generado
+ *   2. Inserta todas las líneas en `pedido_items` con ese id
+ *   3. Descuenta el stock de cada producto vendido
+ * 
+ * Si cualquier paso falla, lanzamos el error para que el caller lo maneje.
+ */
+export const crearPedido = async (datosPedido, items) => {
+  // Paso 1: crear la cabecera del pedido
+  const { data: pedido, error: errorPedido } = await supabase
+    .from('pedidos')
+    .insert([datosPedido])
+    .select()
+    .single()
+
+  if (errorPedido) throw errorPedido
+
+  // Paso 2: insertar líneas de detalle con descuentos por item
+  const lineas = items.map(item => ({
+    pedido_id:        pedido.id,
+    producto_id:      item.producto_id,
+    nombre:           item.nombre,
+    cantidad:         item.cantidad,
+    precio_unit:      item.precio_unit,
+    subtotal:         item.subtotal,
+    descuento_tipo:   item.descuento_tipo   || null,
+    descuento_valor:  item.descuento_valor  || 0,
+    descuento_monto:  item.descuento_monto  || 0
+  }))
+
+  const { error: errorItems } = await supabase
+    .from('pedido_items')
+    .insert(lineas)
+
+  if (errorItems) throw errorItems
+
+  // Paso 3: descontar stock
+  await Promise.all(
+    items.map(async (item) => {
+      if (!item.producto_id) return
+      const { data: prod, error: errorStock } = await supabase
+        .from('productos')
+        .select('stock')
+        .eq('id', item.producto_id)
+        .single()
+
+      if (errorStock) throw errorStock
+
+      const nuevoStock = Math.max(0, prod.stock - item.cantidad)
+      const { error: errorUpdate } = await supabase
+        .from('productos')
+        .update({ stock: nuevoStock })
+        .eq('id', item.producto_id)
+
+      if (errorUpdate) throw errorUpdate
+    })
+  )
+
+  return pedido
+}
+
+/**
+ * Trae todos los pedidos con sus items incluidos.
+ * Ordenados por fecha descendente (el más reciente primero).
+ */
+export const fetchPedidos = async () => {
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select(`
+      *,
+      pedido_items (
+        id,
+        nombre,
+        cantidad,
+        precio_unit,
+        subtotal,
+        producto_id
+      )
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Trae solo los pedidos de hoy.
+ * Útil para el resumen diario del módulo de cobranza.
+ */
+export const fetchPedidosHoy = async () => {
+  // Calculamos el inicio del día en hora local
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select(`
+      *,
+      pedido_items (
+        id,
+        nombre,
+        cantidad,
+        precio_unit,
+        subtotal
+      )
+    `)
+    .gte('created_at', hoy.toISOString())
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Cambia el estado de un pedido.
+ * Estados válidos: 'pagado', 'pendiente', 'señado'
+ */
+export const actualizarEstadoPedido = async (pedidoId, nuevoEstado) => {
+  const { error } = await supabase
+    .from('pedidos')
+    .update({ estado: nuevoEstado })
+    .eq('id', pedidoId)
+
+  if (error) throw error
+  return { success: true }
+}
+
+/**
+ * Anula un pedido: devuelve el stock y elimina el registro.
+ * El cascade en la DB elimina los pedido_items automáticamente.
+ */
+export const anularPedido = async (pedido) => {
+  // Devolver stock de cada item
+  await Promise.all(
+    pedido.pedido_items.map(async (item) => {
+      if (!item.producto_id) return
+
+      const { data: prod, error: errorProd } = await supabase
+        .from('productos')
+        .select('stock')
+        .eq('id', item.producto_id)
+        .single()
+
+      if (errorProd) throw errorProd
+
+      const { error: errorStock } = await supabase
+        .from('productos')
+        .update({ stock: prod.stock + item.cantidad })
+        .eq('id', item.producto_id)
+
+      if (errorStock) throw errorStock
+    })
+  )
+
+  // Eliminar el pedido (los items se borran solos por el cascade)
+  const { error } = await supabase
+    .from('pedidos')
+    .delete()
+    .eq('id', pedido.id)
+
+  if (error) throw error
+  return { success: true }
+}
+
+/**
+ * Trae estadísticas para el dashboard.
+ * Devuelve ventas agrupadas por día de los últimos 30 días.
+ */
+export const fetchEstadisticas = async () => {
+  const hace30dias = new Date()
+  hace30dias.setDate(hace30dias.getDate() - 30)
+
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select('created_at, total, estado, pedido_items(nombre, cantidad, subtotal)')
+    .gte('created_at', hace30dias.toISOString())
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data
+}
+// ═══════════════════════════════════════════════════════════════
+// SECCIÓN: BANNERS
+// ═══════════════════════════════════════════════════════════════
+
+// Trae todos los banners activos ordenados por el campo 'orden'
+// Lo usa la tienda pública para mostrar el carrusel
+export const fetchBanners = async () => {
+  const { data, error } = await supabase
+    .from('banners')
+    .select('*')
+    .eq('activo', true)
+    .order('orden', { ascending: true })
+
+  if (error) throw error
+  return data
+}
+
+// Trae TODOS los banners (activos e inactivos) para el panel admin
+export const fetchBannersAdmin = async () => {
+  const { data, error } = await supabase
+    .from('banners')
+    .select('*')
+    .order('orden', { ascending: true })
+
+  if (error) throw error
+  return data
+}
+
+// Crea un banner nuevo
+export const crearBanner = async (banner) => {
+  const { data, error } = await supabase
+    .from('banners')
+    .insert([banner])
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+// Actualiza un banner existente
+export const actualizarBanner = async (id, datos) => {
+  const { error } = await supabase
+    .from('banners')
+    .update(datos)
+    .eq('id', id)
+
+  if (error) throw error
+  return { success: true }
+}
+
+// Elimina un banner
+export const eliminarBanner = async (id) => {
+  const { error } = await supabase
+    .from('banners')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+  return { success: true }
+}
+
+// Actualiza el orden de varios banners a la vez
+// Recibe un array de { id, orden }
+export const actualizarOrdenBanners = async (items) => {
+  await Promise.all(
+    items.map(item =>
+      supabase
+        .from('banners')
+        .update({ orden: item.orden })
+        .eq('id', item.id)
+    )
+  )
+  return { success: true }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SECCIÓN: GASTOS
+// ═══════════════════════════════════════════════════════════════
+
+// Trae todos los gastos con sus items incluidos
+export const fetchGastos = async () => {
+  const { data, error } = await supabase
+    .from('gastos')
+    .select(`
+      *,
+      gasto_items (
+        id,
+        nombre,
+        cantidad,
+        precio_costo,
+        subtotal,
+        producto_id
+      )
+    `)
+    .order('fecha', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Trae gastos de los últimos 30 días para estadísticas
+export const fetchGastosRecientes = async () => {
+  const hace30dias = new Date()
+  hace30dias.setDate(hace30dias.getDate() - 30)
+
+  const { data, error } = await supabase
+    .from('gastos')
+    .select(`
+      *,
+      gasto_items (
+        id,
+        nombre,
+        cantidad,
+        precio_costo,
+        subtotal,
+        producto_id
+      )
+    `)
+    .gte('fecha', hace30dias.toISOString().split('T')[0])
+    .order('fecha', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+// Crea un gasto completo con sus items
+export const crearGasto = async (datosGasto, items) => {
+  // Paso 1: crear la cabecera
+  const { data: gasto, error: errorGasto } = await supabase
+    .from('gastos')
+    .insert([datosGasto])
+    .select()
+    .single()
+
+  if (errorGasto) throw errorGasto
+
+  // Paso 2: insertar los items
+  const lineas = items.map(item => ({
+    gasto_id:     gasto.id,
+    producto_id:  item.producto_id || null,
+    nombre:       item.nombre,
+    cantidad:     item.cantidad,
+    precio_costo: item.precio_costo,
+    subtotal:     item.subtotal
+  }))
+
+  const { error: errorItems } = await supabase
+    .from('gasto_items')
+    .insert(lineas)
+
+  if (errorItems) throw errorItems
+
+  return gasto
+}
+
+// Elimina un gasto (los items se borran solos por cascade)
+export const eliminarGasto = async (id) => {
+  const { error } = await supabase
+    .from('gastos')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+  return { success: true }
+}

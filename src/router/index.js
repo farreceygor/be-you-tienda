@@ -1,18 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// Importamos la tienda (que moviste a views) y el Admin
-import TiendaView from '../views/TiendaView.vue'
-import AdminPanel from '../views/AdminPanel.vue'
 
 const routes = [
   {
     path: '/',
     name: 'tienda',
-    component: TiendaView
+    component: () => import('../views/TiendaView.vue')
   },
   {
     path: '/admin',
     name: 'admin',
-    component: AdminPanel
+    component: () => import('../views/AdminPanel.vue')
+  },
+  {
+    path: '/admin/cobranza',
+    name: 'cobranza',
+    component: () => import('../views/CobranzaView.vue')
+  },
+  {
+    path: '/admin/estadisticas',
+    name: 'estadisticas',
+    component: () => import('../views/EstadisticasView.vue')
+  },
+
+  {
+  path: '/admin/gastos',
+  name: 'gastos',
+  component: () => import('../views/GastosView.vue')
   }
 ]
 
