@@ -429,6 +429,12 @@ function onSearchBlur() {
 }
 
 function seleccionarSugerencia(p) {
+  // Si tiene variantes, debe elegirse desde el catálogo
+  if (p.variantes && p.variantes.trim() !== '') {
+    mostrarToast('🌸 Elegí una variante desde el catálogo, porfa')
+    return
+  }
+  
   agregarAlCarrito(p, null)
   busqueda.value = ''
   searchFocused.value = false

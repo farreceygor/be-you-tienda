@@ -355,9 +355,12 @@ export const crearBanner = async (banner) => {
 
 // Actualiza un banner existente
 export const actualizarBanner = async (id, datos) => {
+  // Excluir el id de los datos a actualizar (PostgreSQL no permite actualizar PK)
+  const { id: _, ...datosLimpios } = datos
+  
   const { error } = await supabase
     .from('banners')
-    .update(datos)
+    .update(datosLimpios)
     .eq('id', id)
 
   if (error) throw error

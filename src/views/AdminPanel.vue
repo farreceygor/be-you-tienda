@@ -625,19 +625,32 @@ const emojisDisponibles = [
 ]
 
 async function guardarCategoria() {
-  if (!nuevaCatNombre.value.trim()) return
+  const nombre = nuevaCatNombre.value.trim()
+  
+  // Validaciones
+  if (!nombre) {
+    mostrarToast('⚠️ Escribí el nombre de la categoría')
+    return
+  }
+  
+  if (nombre.length < 2) {
+    mostrarToast('⚠️ El nombre debe tener al menos 2 caracteres')
+    return
+  }
+  
   cargando.value = true
-  const slug = nuevaCatNombre.value.toLowerCase().trim().replace(/\s+/g, '-')
+  const slug = nombre.toLowerCase().replace(/\s+/g, '-')
+  
   try {
     if (editandoCatId.value) {
       await supabase
         .from('categorias')
-        .update({ nombre: nuevaCatNombre.value, slug, emoji: nuevaCatEmoji.value })
+        .update({ nombre: nombre, slug, emoji: nuevaCatEmoji.value })
         .eq('id', editandoCatId.value)
     } else {
       await supabase
         .from('categorias')
-        .insert([{ nombre: nuevaCatNombre.value, slug, emoji: nuevaCatEmoji.value }])
+        .insert([{ nombre: nombre, slug, emoji: nuevaCatEmoji.value }])
     }
     nuevaCatNombre.value = ''
     nuevaCatEmoji.value  = '✨'
