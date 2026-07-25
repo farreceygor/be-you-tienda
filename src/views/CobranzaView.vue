@@ -54,14 +54,14 @@
           <div class="prod-search__input-wrap">
             <span class="prod-search__icon">🔍</span>
             <input
-              v-model="busquedaProd"
-              type="text"
-              class="prod-search__input"
-              placeholder="Buscá por nombre del producto..."
-              @input="filtrarProductos"
-              @focus="searchAbierto = true"
-              @blur="setTimeout(() => searchAbierto = false, 200)"
-            />
+  v-model="busquedaProd"
+  type="text"
+  class="prod-search__input"
+  placeholder="Buscá por nombre del producto..."
+  @input="filtrarProductos"
+  @focus="searchAbierto = true"
+  @blur="cerrarSearchConRetraso"
+/>
           </div>
 
           <!-- Dropdown de resultados -->
@@ -334,12 +334,14 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { supabase } from '../lib/supabaseClient'
 import {
   fetchProductos,
+  subirImagenProducto,
   crearPedido,
   fetchPedidos,
   fetchPedidosHoy,
   anularPedido
 } from '../services/productoService.js'
 import { actualizarEstadoPedido } from '../services/productoService.js'
+import { useCarrito } from '../composables/useCarrito'
 
 // ─── ESTADO GENERAL ──────────────────────────────────────────────
 const vistaActual = ref('nueva')
@@ -351,16 +353,27 @@ const todosLosProductos = ref([])
 const busquedaProd = ref('')
 const searchAbierto = ref(false)
 
+// ─── CARRITO ───────────────────────────────────────────────────
+const {
+  carrito: carritoInterno,
+  buscarStock,
+  buscarImagen
+} = useCarrito(todosLosProductos)
+
 const productosBuscados = computed(() => {
   if (!busquedaProd.value.trim()) return []
   const q = busquedaProd.value.toLowerCase()
   return todosLosProductos.value
-    .filter(p => p.nombre.toLowerCase().includes(q))
+    .filter(p => p.nombre && p.nombre.toLowerCase().includes(q))
     .slice(0, 8)
 })
 
 function filtrarProductos() {
   searchAbierto.value = true
+}
+
+function cerrarSearchConRetraso() {
+  setTimeout(() => { searchAbierto.value = false }, 200)
 }
 
 function seleccionarProducto(p) {
