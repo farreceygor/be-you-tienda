@@ -103,12 +103,13 @@
                 <th>Precio</th>
                 <th>Stock</th>
                 <th>Estado</th>
+                <th>Web</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="inventarioFiltrado.length === 0">
-                <td colspan="6" class="tabla__empty">Sin productos</td>
+                <td colspan="7" class="tabla__empty">Sin productos</td>
               </tr>
               <tr v-for="prod in inventarioFiltrado" :key="prod.id">
                 <td>
@@ -129,8 +130,21 @@
                     {{ prod.stock > 0 ? 'Activo' : 'Sin stock' }}
                   </span>
                 </td>
+                
+                <!-- Columna WEB (Botón habilitar/deshabilitar) -->
                 <td>
-                  <div class="acciones">                   
+                  <button 
+                    class="accion-btn" 
+                    :title="prod.visible_web !== false ? 'Ocultar de la web' : 'Mostrar en la web'" 
+                    @click="toggleVisibilidadWeb(prod)"
+                  >
+                    {{ prod.visible_web !== false ? '🌐' : '🙈' }}
+                  </button>
+                </td>
+
+                <!-- Columna ACCIONES (Editar y Eliminar) -->
+                <td>
+                  <div class="acciones">                 
                     <button class="accion-btn accion-btn--edit" title="Editar" @click="prepararEdicion(prod)">✏️</button>
                     <button class="accion-btn accion-btn--del" title="Eliminar" @click="eliminarProducto(prod)">🗑️</button>
                   </div>
@@ -210,36 +224,34 @@
         </div>
 
         <div class="form-card" style="margin-bottom: 16px;">
-  <h3 class="form-card__title">{{ editandoCatId ? 'Editar categoría' : 'Nueva categoría' }}</h3>
-  <div class="cat-nueva">
-    <input
-      v-model="nuevaCatNombre"
-      type="text"
-      placeholder="Ej: Accesorios"
-      :disabled="cargando"
-    />
-    <!-- Selector de emoji -->
-    <select v-model="nuevaCatEmoji" class="cat-emoji-select">
-      <option v-for="e in emojisDisponibles" :key="e.valor" :value="e.valor">
-        {{ e.valor }} {{ e.label }}
-      </option>
-    </select>
-    <button @click="guardarCategoria" class="btn-primary" :disabled="cargando">
-      {{ cargando ? '...' : (editandoCatId ? 'Actualizar' : 'Agregar') }}
-    </button>
-    <button
-      v-if="editandoCatId"
-      @click="editandoCatId = null; nuevaCatNombre = ''; nuevaCatEmoji = '✨'"
-      class="btn-ghost"
-    >
-      Cancelar
-    </button>
-  </div>
-  <!-- Preview -->
-  <p class="cat-preview">
-    Vista previa: <strong>{{ nuevaCatEmoji }} {{ nuevaCatNombre || 'Nombre' }}</strong>
-  </p>
-</div>
+          <h3 class="form-card__title">{{ editandoCatId ? 'Editar categoría' : 'Nueva categoría' }}</h3>
+          <div class="cat-nueva">
+            <input
+              v-model="nuevaCatNombre"
+              type="text"
+              placeholder="Ej: Accesorios"
+              :disabled="cargando"
+            />
+            <select v-model="nuevaCatEmoji" class="cat-emoji-select">
+              <option v-for="e in emojisDisponibles" :key="e.valor" :value="e.valor">
+                {{ e.valor }} {{ e.label }}
+              </option>
+            </select>
+            <button @click="guardarCategoria" class="btn-primary" :disabled="cargando">
+              {{ cargando ? '...' : (editandoCatId ? 'Actualizar' : 'Agregar') }}
+            </button>
+            <button
+              v-if="editandoCatId"
+              @click="editandoCatId = null; nuevaCatNombre = ''; nuevaCatEmoji = '✨'"
+              class="btn-ghost"
+            >
+              Cancelar
+            </button>
+          </div>
+          <p class="cat-preview">
+            Vista previa: <strong>{{ nuevaCatEmoji }} {{ nuevaCatNombre || 'Nombre' }}</strong>
+          </p>
+        </div>
 
         <div class="tabla-wrap">
           <table class="tabla">
@@ -251,142 +263,131 @@
                 <td colspan="3" class="tabla__empty">Sin categorías</td>
               </tr>
               <tr v-for="cat in categorias" :key="cat.id">
-  <td>
-    <strong>{{ cat.emoji }} {{ cat.nombre }}</strong>
-  </td>
-  <td class="td-mid hide-sm">{{ cat.slug }}</td>
-  <td>
-    <div class="acciones">
-      <button class="accion-btn accion-btn--edit" @click="prepararEdicionCategoria(cat)">✏️</button>
-      <button class="accion-btn accion-btn--del" @click="eliminarCategoria(cat)">🗑️</button>
-    </div>
-  </td>
-</tr>
+                <td>
+                  <strong>{{ cat.emoji }} {{ cat.nombre }}</strong>
+                </td>
+                <td class="td-mid hide-sm">{{ cat.slug }}</td>
+                <td>
+                  <div class="acciones">
+                    <button class="accion-btn accion-btn--edit" @click="prepararEdicionCategoria(cat)">✏️</button>
+                    <button class="accion-btn accion-btn--del" @click="eliminarCategoria(cat)">🗑️</button>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
+
       <!-- ═══ BANNERS ═══ -->
-<div v-if="vistaActual === 'banners'" class="fade-in">
-  <div class="page-header">
-    <div>
-      <h1 class="page-title">Banners</h1>
-      <p class="page-sub">Gestioná el carrusel de la tienda</p>
-    </div>
-    <button class="btn-primary" @click="prepararNuevoBanner(); editandoBanner = -1">
-      + Nuevo banner
-    </button>
-  </div>
+      <div v-if="vistaActual === 'banners'" class="fade-in">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Banners</h1>
+            <p class="page-sub">Gestioná el carrusel de la tienda</p>
+          </div>
+          <button class="btn-primary" @click="prepararNuevoBanner(); editandoBanner = -1">
+            + Nuevo banner
+          </button>
+        </div>
 
-  <!-- Formulario nuevo/editar -->
-  <div v-if="editandoBanner !== null" class="form-card" style="margin-bottom: 16px;">
-    <h3 class="form-card__title">{{ editandoBanner === -1 ? 'Nuevo banner' : 'Editar banner' }}</h3>
-    <div class="form-grid">
-      <div class="form-group form-group--full">
-        <label>Título</label>
-        <input v-model="nuevoBanner.titulo" type="text" placeholder="Ej: Nueva colección de verano" />
-      </div>
-      <div class="form-group form-group--full">
-        <label>Subtítulo</label>
-        <input v-model="nuevoBanner.subtitulo" type="text" placeholder="Ej: Descubrí las últimas tendencias" />
-      </div>
-      <div class="form-group">
-        <label>Eyebrow (texto pequeño arriba)</label>
-        <input v-model="nuevoBanner.eyebrow" type="text" placeholder="Ej: Nueva colección" />
-      </div>
-      <div class="form-group">
-        <label>Emoji decorativo</label>
-        <input v-model="nuevoBanner.emoji_deco" type="text" placeholder="Ej: 💄" maxlength="4" />
-      </div>
-      <div class="form-group">
-        <label>Texto del botón</label>
-        <input v-model="nuevoBanner.cta_texto" type="text" placeholder="Ej: Ver productos" />
-      </div>
-      <div class="form-group">
-        <label>Categoría del botón</label>
-        <select v-model="nuevoBanner.cta_cat">
-          <option value="todos">Todos los productos</option>
-          <option v-for="cat in categorias" :key="cat.id" :value="cat.nombre">
-            {{ cat.nombre }}
-          </option>
-        </select>
-      </div>
-      <div class="form-group form-group--full">
-        <label>Color de fondo</label>
-        <div class="gradientes-grid">
-          <div
-            v-for="g in gradientesPreset"
-            :key="g.value"
-            class="gradiente-chip"
-            :class="{ 'gradiente-chip--active': nuevoBanner.gradiente === g.value }"
-            :style="{ background: g.value }"
-            @click="nuevoBanner.gradiente = g.value"
-          >
-            <span class="gradiente-chip__label">{{ g.label }}</span>
+        <div v-if="editandoBanner !== null" class="form-card" style="margin-bottom: 16px;">
+          <h3 class="form-card__title">{{ editandoBanner === -1 ? 'Nuevo banner' : 'Editar banner' }}</h3>
+          <div class="form-grid">
+            <div class="form-group form-group--full">
+              <label>Título</label>
+              <input v-model="nuevoBanner.titulo" type="text" placeholder="Ej: Nueva colección de verano" />
+            </div>
+            <div class="form-group form-group--full">
+              <label>Subtítulo</label>
+              <input v-model="nuevoBanner.subtitulo" type="text" placeholder="Ej: Descubrí las últimas tendencias" />
+            </div>
+            <div class="form-group">
+              <label>Eyebrow (texto pequeño arriba)</label>
+              <input v-model="nuevoBanner.eyebrow" type="text" placeholder="Ej: Nueva colección" />
+            </div>
+            <div class="form-group">
+              <label>Emoji decorativo</label>
+              <input v-model="nuevoBanner.emoji_deco" type="text" placeholder="Ej: 💄" maxlength="4" />
+            </div>
+            <div class="form-group">
+              <label>Texto del botón</label>
+              <input v-model="nuevoBanner.cta_texto" type="text" placeholder="Ej: Ver productos" />
+            </div>
+            <div class="form-group">
+              <label>Categoría del botón</label>
+              <select v-model="nuevoBanner.cta_cat">
+                <option value="todos">Todos los productos</option>
+                <option v-for="cat in categorias" :key="cat.id" :value="cat.nombre">
+                  {{ cat.nombre }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group form-group--full">
+              <label>Color de fondo</label>
+              <div class="gradientes-grid">
+                <div
+                  v-for="g in gradientesPreset"
+                  :key="g.value"
+                  class="gradiente-chip"
+                  :class="{ 'gradiente-chip--active': nuevoBanner.gradiente === g.value }"
+                  :style="{ background: g.value }"
+                  @click="nuevoBanner.gradiente = g.value"
+                >
+                  <span class="gradiente-chip__label">{{ g.label }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group form-group--full">
+              <label>Vista previa</label>
+              <div class="banner-preview" :style="{ background: nuevoBanner.gradiente }">
+                <div class="banner-preview__content">
+                  <span class="banner-preview__eyebrow">{{ nuevoBanner.eyebrow || 'Eyebrow' }}</span>
+                  <p class="banner-preview__titulo">{{ nuevoBanner.titulo || 'Título del banner' }}</p>
+                  <p class="banner-preview__sub">{{ nuevoBanner.subtitulo || 'Subtítulo descriptivo' }}</p>
+                  <span class="banner-preview__btn">{{ nuevoBanner.cta_texto || 'Ver productos' }}</span>
+                </div>
+                <span class="banner-preview__deco">{{ nuevoBanner.emoji_deco }}</span>
+              </div>
+            </div>
+            <div class="form-group form-group--full form-actions">
+              <button class="btn-ghost" @click="editandoBanner = null">Cancelar</button>
+              <button class="btn-primary" @click="guardarBanner" :disabled="cargando">
+                {{ cargando ? 'Guardando...' : (editandoBanner === -1 ? 'Crear banner' : 'Guardar cambios') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="banners-lista">
+          <div v-if="banners.length === 0" class="tabla-wrap">
+            <p style="padding: 30px; text-align: center; color: var(--mid);">Sin banners creados</p>
+          </div>
+          <div v-for="(banner, idx) in banners" :key="banner.id" class="banner-item">
+            <div class="banner-item__preview" :style="{ background: banner.gradiente }">
+              <span class="banner-item__emoji">{{ banner.emoji_deco }}</span>
+            </div>
+            <div class="banner-item__info">
+              <span class="banner-item__titulo">{{ banner.titulo }}</span>
+              <span class="banner-item__sub">{{ banner.subtitulo }}</span>
+              <span class="banner-item__cat">→ {{ banner.cta_cat }}</span>
+            </div>
+            <div class="banner-item__acciones">
+              <button
+                class="accion-btn"
+                :title="banner.activo ? 'Desactivar' : 'Activar'"
+                @click="toggleActivoBanner(banner)"
+              >
+                {{ banner.activo ? '✅' : '⭕' }}
+              </button>
+              <button class="accion-btn" title="Subir" :disabled="idx === 0" @click="moverBannerOrden(idx, -1)">↑</button>
+              <button class="accion-btn" title="Bajar" :disabled="idx === banners.length - 1" @click="moverBannerOrden(idx, 1)">↓</button>
+              <button class="accion-btn accion-btn--edit" title="Editar" @click="prepararEdicionBanner(banner)">✏️</button>
+              <button class="accion-btn accion-btn--del" title="Eliminar" @click="eliminarBannerAdmin(banner)">🗑️</button>
+            </div>
           </div>
         </div>
       </div>
-      <!-- Preview del banner -->
-      <div class="form-group form-group--full">
-        <label>Vista previa</label>
-        <div class="banner-preview" :style="{ background: nuevoBanner.gradiente }">
-          <div class="banner-preview__content">
-            <span class="banner-preview__eyebrow">{{ nuevoBanner.eyebrow || 'Eyebrow' }}</span>
-            <p class="banner-preview__titulo">{{ nuevoBanner.titulo || 'Título del banner' }}</p>
-            <p class="banner-preview__sub">{{ nuevoBanner.subtitulo || 'Subtítulo descriptivo' }}</p>
-            <span class="banner-preview__btn">{{ nuevoBanner.cta_texto || 'Ver productos' }}</span>
-          </div>
-          <span class="banner-preview__deco">{{ nuevoBanner.emoji_deco }}</span>
-        </div>
-      </div>
-      <div class="form-group form-group--full form-actions">
-        <button class="btn-ghost" @click="editandoBanner = null">Cancelar</button>
-        <button class="btn-primary" @click="guardarBanner" :disabled="cargando">
-          {{ cargando ? 'Guardando...' : (editandoBanner === -1 ? 'Crear banner' : 'Guardar cambios') }}
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Lista de banners -->
-  <div class="banners-lista">
-    <div v-if="banners.length === 0" class="tabla-wrap">
-      <p style="padding: 30px; text-align: center; color: var(--mid);">Sin banners creados</p>
-    </div>
-    <div v-for="(banner, idx) in banners" :key="banner.id" class="banner-item">
-      <!-- Preview mini -->
-      <div class="banner-item__preview" :style="{ background: banner.gradiente }">
-        <span class="banner-item__emoji">{{ banner.emoji_deco }}</span>
-      </div>
-      <!-- Info -->
-      <div class="banner-item__info">
-        <span class="banner-item__titulo">{{ banner.titulo }}</span>
-        <span class="banner-item__sub">{{ banner.subtitulo }}</span>
-        <span class="banner-item__cat">→ {{ banner.cta_cat }}</span>
-      </div>
-      <!-- Acciones -->
-      <div class="banner-item__acciones">
-        <!-- Toggle activo -->
-        <button
-          class="accion-btn"
-          :title="banner.activo ? 'Desactivar' : 'Activar'"
-          @click="toggleActivoBanner(banner)"
-        >
-          {{ banner.activo ? '✅' : '⭕' }}
-        </button>
-        <!-- Reordenar -->
-        <button class="accion-btn" title="Subir" :disabled="idx === 0" @click="moverBannerOrden(idx, -1)">↑</button>
-        <button class="accion-btn" title="Bajar" :disabled="idx === banners.length - 1" @click="moverBannerOrden(idx, 1)">↓</button>
-        <!-- Editar -->
-        <button class="accion-btn accion-btn--edit" title="Editar" @click="prepararEdicionBanner(banner)">✏️</button>
-        <!-- Eliminar -->
-        <button class="accion-btn accion-btn--del" title="Eliminar" @click="eliminarBannerAdmin(banner)">🗑️</button>
-      </div>
-    </div>
-  </div>
-</div>
-      <!-- ═══ VENTAS (modal rápido desde inventario) ═══ -->
-      
 
     </main>
 
@@ -406,6 +407,7 @@ import {
   subirImagenProducto,
   crearProducto,
   fetchCategorias,
+  fetchProductosAdmin,
   fetchBannersAdmin,
   crearBanner,
   actualizarBanner,
@@ -418,7 +420,6 @@ const menuAbierto = ref(false)
 function toggleMenu() { menuAbierto.value = !menuAbierto.value }
 function cerrarMenu() { menuAbierto.value = false }
 
-// Cerramos el menú y cambiamos la vista (Única declaración de cambiarVista)
 function cambiarVista(vista) {
   vistaActual.value = vista
   cerrarMenu()
@@ -487,6 +488,37 @@ function mostrarToast(msg) {
   toastTimer = setTimeout(() => { toast.show = false }, 2500)
 }
 
+// ─── BANNERS (Declarados antes de inicializarDatos) ───────────────
+const banners = ref([])
+const editandoBanner = ref(null) 
+const nuevoBanner = ref({
+  titulo: '',
+  subtitulo: '',
+  eyebrow: '',
+  cta_texto: 'Ver productos',
+  cta_cat: 'todos',
+  gradiente: 'linear-gradient(135deg, #3D1A25 0%, #7A3350 60%, #C9748A 100%)',
+  emoji_deco: '✨',
+  orden: 0,
+  activo: true
+})
+
+const gradientesPreset = [
+  { label: 'Rosa',    value: 'linear-gradient(135deg, #3D1A25 0%, #7A3350 60%, #C9748A 100%)' },
+  { label: 'Azul',    value: 'linear-gradient(135deg, #1A2D3D 0%, #2B5070 60%, #4A8FA8 100%)' },
+  { label: 'Dorado', value: 'linear-gradient(135deg, #2D2A1A 0%, #5C4E2B 60%, #C9A96E 100%)' },
+  { label: 'Verde',  value: 'linear-gradient(135deg, #1A3D2A 0%, #2B7050 60%, #4AA870 100%)' },
+  { label: 'Violeta',value: 'linear-gradient(135deg, #2A1A3D 0%, #50307A 60%, #8A60C9 100%)' },
+]
+
+async function cargarBanners() {
+  try {
+    banners.value = await fetchBannersAdmin()
+  } catch (e) {
+    mostrarToast('❌ Error al cargar banners')
+  }
+}
+
 // ─── INVENTARIO ───────────────────────────────────────────────────
 const inventarioFiltrado = computed(() => {
   if (!textoBusqueda.value) return productosCargados.value
@@ -504,11 +536,23 @@ function stockClass(stock) {
 }
 
 async function cargarInventario() {
-  const { data, error } = await supabase
-    .from('productos')
-    .select('id, nombre, precio, stock, imagen_url, variantes, categoria_id, categorias(nombre)')
-    .order('created_at', { ascending: false })
-  if (!error) productosCargados.value = data.map(p => ({ ...p, img: p.imagen_url }))
+  try {
+    const response = await fetchProductosAdmin()
+    const data = response?.data !== undefined ? response.data : response
+    const error = response?.error
+
+    if (error) {
+      console.error('Error al obtener productos:', error)
+      return
+    }
+
+    productosCargados.value = (data || []).map(p => ({
+      ...p,
+      img: p.imagen_url
+    }))
+  } catch (err) {
+    console.error('Error inesperado en cargarInventario:', err)
+  }
 }
 
 // ─── FORMULARIO PRODUCTO ─────────────────────────────────────────
@@ -570,11 +614,9 @@ async function eliminarProducto(producto) {
     if (producto.imagen_url) {
       const partes = producto.imagen_url.split('/')
       const nombreArchivo = partes[partes.length - 1]
-      const { error: errorImg } = await supabase.storage.from('productos-img').remove([nombreArchivo])
-      if (errorImg) console.warn('No se pudo eliminar la imagen:', errorImg.message)
+      await supabase.storage.from('productos-img').remove([nombreArchivo])
     }
-    const { error: errorProd } = await supabase.from('productos').delete().eq('id', producto.id)
-    if (errorProd) throw errorProd
+    await supabase.from('productos').delete().eq('id', producto.id)
     await cargarInventario()
     mostrarToast('✅ Producto eliminado')
   } catch (error) {
@@ -596,61 +638,59 @@ function previsualizarImagen(e) {
   if (file) { imagenArchivo.value = file; imgPreview.value = URL.createObjectURL(file) }
 }
 
+async function toggleVisibilidadWeb(producto) {
+  cargando.value = true
+  try {
+    const nuevoEstado = !producto.visible_web
+    await supabase
+      .from('productos')
+      .update({ visible_web: nuevoEstado })
+      .eq('id', producto.id)
+    
+    producto.visible_web = nuevoEstado
+    mostrarToast(
+      nuevoEstado 
+        ? '✅ Producto visible en web' 
+        : '🙈 Producto oculto en web'
+    )
+  } catch (error) {
+    mostrarToast('❌ Error al cambiar visibilidad: ' + error.message)
+  } finally {
+    cargando.value = false
+  }
+}
+
 // ─── CATEGORÍAS ───────────────────────────────────────────────────
 const nuevaCatNombre = ref('')
 const editandoCatId  = ref(null)
 const nuevaCatEmoji  = ref('✨')
 const emojisDisponibles = [
-  { valor: '✨', label: 'Destellos' },
-  { valor: '💄', label: 'Labial' },
-  { valor: '👁️', label: 'Ojos' },
-  { valor: '🌸', label: 'Flor' },
-  { valor: '🎁', label: 'Regalo' },
-  { valor: '💅', label: 'Uñas' },
-  { valor: '💍', label: 'Anillo' },
-  { valor: '🧴', label: 'Cuidado' },
-  { valor: '👜', label: 'Cartera' },
-  { valor: '🪞', label: 'Espejo' },
-  { valor: '🧖', label: 'Spa' },
-  { valor: '🛍️', label: 'Accesorio' },
-  { valor: '💋', label: 'Beso' },
-  { valor: '🌺', label: 'Flor 2' },
-  { valor: '🎀', label: 'Moño' },
-  { valor: '🌟', label: 'Estrella' },
-  { valor: '🕶️', label: 'Lentes' },
-  { valor: '❄️', label: 'Invierno' },
-  { valor: '☀️', label: 'Verano' },
-  { valor: '👝', label: 'Billetera' },
-  { valor: '💎', label: 'Diamante' },
+  { valor: '✨', label: 'Destellos' }, { valor: '💄', label: 'Labial' },
+  { valor: '👁️', label: 'Ojos' }, { valor: '🌸', label: 'Flor' },
+  { valor: '🎁', label: 'Regalo' }, { valor: '💅', label: 'Uñas' },
+  { valor: '💍', label: 'Anillo' }, { valor: '🧴', label: 'Cuidado' },
+  { valor: '👜', label: 'Cartera' }, { valor: '🪞', label: 'Espejo' },
+  { valor: '🧖', label: 'Spa' }, { valor: '🛍️', label: 'Accesorio' },
+  { valor: '💋', label: 'Beso' }, { valor: '🌺', label: 'Flor 2' },
+  { valor: '🎀', label: 'Moño' }, { valor: '🌟', label: 'Estrella' },
+  { valor: '🕶️', label: 'Lentes' }, { valor: '❄️', label: 'Invierno' },
+  { valor: '☀️', label: 'Verano' }, { valor: '👝', label: 'Billetera' },
+  { valor: '💎', label: 'Diamante' },{ valor: '🥤', label: 'Botella' },
 ]
 
 async function guardarCategoria() {
   const nombre = nuevaCatNombre.value.trim()
-  
-  // Validaciones
-  if (!nombre) {
-    mostrarToast('⚠️ Escribí el nombre de la categoría')
+  if (!nombre || nombre.length < 2) {
+    mostrarToast('⚠️ Verificá el nombre de la categoría')
     return
   }
-  
-  if (nombre.length < 2) {
-    mostrarToast('⚠️ El nombre debe tener al menos 2 caracteres')
-    return
-  }
-  
   cargando.value = true
   const slug = nombre.toLowerCase().replace(/\s+/g, '-')
-  
   try {
     if (editandoCatId.value) {
-      await supabase
-        .from('categorias')
-        .update({ nombre: nombre, slug, emoji: nuevaCatEmoji.value })
-        .eq('id', editandoCatId.value)
+      await supabase.from('categorias').update({ nombre, slug, emoji: nuevaCatEmoji.value }).eq('id', editandoCatId.value)
     } else {
-      await supabase
-        .from('categorias')
-        .insert([{ nombre: nombre, slug, emoji: nuevaCatEmoji.value }])
+      await supabase.from('categorias').insert([{ nombre, slug, emoji: nuevaCatEmoji.value }])
     }
     nuevaCatNombre.value = ''
     nuevaCatEmoji.value  = '✨'
@@ -676,39 +716,9 @@ async function eliminarCategoria(cat) {
   } catch { mostrarToast('⚠️ Tiene productos asociados') }
 }
 
-// ─── BANNERS ─────────────────────────────────────────────────────
-const banners       = ref([])
-const editandoBanner = ref(null) 
-const nuevoBanner   = ref({
-  titulo:    '',
-  subtitulo: '',
-  eyebrow:   '',
-  cta_texto: 'Ver productos',
-  cta_cat:   'todos',
-  gradiente: 'linear-gradient(135deg, #3D1A25 0%, #7A3350 60%, #C9748A 100%)',
-  emoji_deco: '✨',
-  orden:     0,
-  activo:    true
-})
-
-const gradientesPreset = [
-  { label: 'Rosa',    value: 'linear-gradient(135deg, #3D1A25 0%, #7A3350 60%, #C9748A 100%)' },
-  { label: 'Azul',    value: 'linear-gradient(135deg, #1A2D3D 0%, #2B5070 60%, #4A8FA8 100%)' },
-  { label: 'Dorado', value: 'linear-gradient(135deg, #2D2A1A 0%, #5C4E2B 60%, #C9A96E 100%)' },
-  { label: 'Verde',  value: 'linear-gradient(135deg, #1A3D2A 0%, #2B7050 60%, #4AA870 100%)' },
-  { label: 'Violeta',value: 'linear-gradient(135deg, #2A1A3D 0%, #50307A 60%, #8A60C9 100%)' },
-]
-
-async function cargarBanners() {
-  try {
-    banners.value = await fetchBannersAdmin()
-  } catch (e) {
-    mostrarToast('❌ Error al cargar banners')
-  }
-}
-
+// Acciones de Banners
 function prepararNuevoBanner() {
-  editandoBanner.value = null
+  editandoBanner.value = -1
   nuevoBanner.value = {
     titulo: '', subtitulo: '', eyebrow: '',
     cta_texto: 'Ver productos', cta_cat: 'todos',
@@ -729,7 +739,7 @@ async function guardarBanner() {
   }
   cargando.value = true
   try {
-    if (editandoBanner.value) {
+    if (editandoBanner.value && editandoBanner.value !== -1) {
       await actualizarBanner(editandoBanner.value, nuevoBanner.value)
       mostrarToast('✅ Banner actualizado')
     } else {
@@ -759,9 +769,7 @@ async function moverBannerOrden(idx, dir) {
   const lista = [...banners.value]
   const nuevoIdx = idx + dir
   if (nuevoIdx < 0 || nuevoIdx >= lista.length) return
-
   ;[lista[idx], lista[nuevoIdx]] = [lista[nuevoIdx], lista[idx]]
-
   const items = lista.map((b, i) => ({ id: b.id, orden: i }))
   try {
     await actualizarOrdenBanners(items)
@@ -1110,7 +1118,28 @@ onMounted(async () => {
 .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
 .btn-ghost { padding: 9px 16px; background: var(--white); color: var(--mid); border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; font-family: inherit; transition: all var(--trans); white-space: nowrap; }
 .btn-ghost:hover { border-color: var(--rose); color: var(--rose); }
-
+.toggle-btn {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--trans);
+}
+.toggle-btn:hover {
+  transform: scale(1.1);
+  border-color: var(--rose);
+}
+.toggle-btn--active {
+  background: #E8F5E8;
+  border-color: #2E7D32;
+  color: #2E7D32;
+}
 /* ─── BANNERS ─── */
 .banners-lista { display: flex; flex-direction: column; gap: 8px; }
 .banner-item { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; gap: 12px; padding: 10px 12px; transition: border-color var(--trans); }

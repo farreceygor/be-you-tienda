@@ -619,7 +619,7 @@ function mostrarToast(msg) {
 // ─── CICLO DE VIDA ───────────────────────────────────────────────
 onMounted(async () => {
   try {
-    todosLosProductos.value = await fetchProductos()
+    todosLosProductos.value = await fetchProductosAdmin()
     await cargarResumenHoy()
   } catch (e) {
     mostrarToast('❌ Error al inicializar')

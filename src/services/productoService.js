@@ -35,6 +35,7 @@ export const fetchProductos = async () => {
   const { data, error } = await supabase
     .from('productos')
     .select(`*,categorias( nombre, slug )`)
+    .eq('visible_web', true)
     .order('id', { ascending: true });
 
   if (error) throw error;
@@ -42,6 +43,23 @@ export const fetchProductos = async () => {
   return data.map(p => ({
     ...p,
     img: p.imagen_url, // Mantenemos compatibilidad con tus componentes
+    categoria: p.categorias?.slug || 'sin-categoria'
+  }));
+};
+
+/** Trae TODOS los productos (visibles + ocultos)
+ * Lo usa AdminPanel.vue y CobranzaView.vue*/
+export const fetchProductosAdmin = async () => {
+  const { data, error } = await supabase
+    .from('productos')
+    .select(`*,categorias( nombre, slug )`)
+    .order('id', { ascending: true });  // ← SIN filtrar
+
+  if (error) throw error;
+
+  return data.map(p => ({
+    ...p,
+    img: p.imagen_url,
     categoria: p.categorias?.slug || 'sin-categoria'
   }));
 };
