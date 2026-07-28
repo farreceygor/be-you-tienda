@@ -334,6 +334,7 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { supabase } from '../lib/supabaseClient'
 import {
   fetchProductos,
+  fetchProductosAdmin,
   subirImagenProducto,
   crearPedido,
   fetchPedidos,
