@@ -1,98 +1,69 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import { supabase } from '../lib/supabaseClient'
+import { useAuth } from '../composables/useAuth'
+
+// Sacamos el "usuario" singleton — es el mismo ref que usan todos los componentes
+const { usuario } = useAuth()
 
 /**
  * Definición de rutas
  */
 const routes = [
-  // RUTAS PÚBLICAS
   {
     path: '/',
     name: 'tienda',
     component: () => import('../views/TiendaView.vue'),
-    meta: {
-      requiresAuth: false,
-      titulo: 'Be You - Tienda'
-    }
+    meta: { requiresAuth: false, titulo: 'Be You - Tienda' }
   },
-
-  // LOGIN (pública pero importante)
   {
     path: '/login',
     name: 'login',
     component: () => import('../views/LoginView.vue'),
-    meta: {
-      requiresAuth: false,
-      titulo: 'Iniciar Sesión - Be You'
-    }
+    meta: { requiresAuth: false, titulo: 'Iniciar Sesión - Be You' }
   },
-
-  // RUTAS PROTEGIDAS (requieren login)
   {
     path: '/admin',
     name: 'admin',
     component: () => import('../views/AdminPanel.vue'),
-    meta: {
-      requiresAuth: true,
-      titulo: 'Panel de Administración'
-    }
+    meta: { requiresAuth: true, titulo: 'Panel de Administración' }
   },
-
   {
     path: '/admin/cobranza',
     name: 'cobranza',
     component: () => import('../views/CobranzaView.vue'),
-    meta: {
-      requiresAuth: true,
-      titulo: 'Cobranza'
-    }
+    meta: { requiresAuth: true, titulo: 'Cobranza' }
   },
-
   {
     path: '/admin/estadisticas',
     name: 'estadisticas',
     component: () => import('../views/EstadisticasView.vue'),
-    meta: {
-      requiresAuth: true,
-      titulo: 'Estadísticas'
-    }
+    meta: { requiresAuth: true, titulo: 'Estadísticas' }
   },
-
   {
     path: '/admin/gastos',
     name: 'gastos',
     component: () => import('../views/GastosView.vue'),
-    meta: {
-      requiresAuth: true,
-      titulo: 'Gastos'
-    }
+    meta: { requiresAuth: true, titulo: 'Gastos' }
   },
-
-  // RUTA 404
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/TiendaView.vue'),
-    meta: {
-      requiresAuth: false
-    }
+    meta: { requiresAuth: false }
   }
 ]
 
-/**
- * Crear router
- */
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
 let sesionVerificada = false
-let usuarioActual = null
 
 /**
- * Verificar sesión una sola vez al iniciar la app
+ * Verifica la sesión UNA sola vez al iniciar la app.
+ * Escribe directamente en el "usuario" singleton de useAuth.
  */
 async function verificarSesionInicial() {
   if (sesionVerificada) return
@@ -102,31 +73,20 @@ async function verificarSesionInicial() {
 
     if (error) {
       console.error('❌ Error verificando sesión:', error)
-      usuarioActual = null
+      usuario.value = null
     } else {
-      usuarioActual = session?.user || null
+      usuario.value = session?.user || null
       if (import.meta.env.DEV) {
-        console.log('✅ Sesión verificada:', usuarioActual?.email || 'sin sesión')
+        console.log('✅ Sesión verificada:', usuario.value?.email || 'sin sesión')
       }
     }
-
-    sesionVerificada = true
   } catch (err) {
     console.error('❌ Error inesperado en verificarSesionInicial:', err)
-    usuarioActual = null
+    usuario.value = null
+  } finally {
     sesionVerificada = true
   }
 }
-
-/**
- * Escuchar cambios de autenticación en tiempo real
- */
-supabase.auth.onAuthStateChange((event, session) => {
-  usuarioActual = session?.user || null
-  if (import.meta.env.DEV) {
-    console.log(`🔔 Auth cambió (${event}):`, usuarioActual?.email || 'sin sesión')
-  }
-})
 
 /**
  * Guard global del router
@@ -134,26 +94,21 @@ supabase.auth.onAuthStateChange((event, session) => {
 router.beforeEach(async (to, from, next) => {
   document.title = to.meta.titulo || 'Be You'
 
-  // Verificar sesión la primera vez
   if (!sesionVerificada) {
     await verificarSesionInicial()
   }
 
-  // Si no requiere auth, permitir
   if (!to.meta.requiresAuth) {
     next()
     return
   }
 
-  // Si requiere auth, verificar que haya usuario
-  if (usuarioActual?.email) {
-    // ✅ Usuario autenticado
+  if (usuario.value?.email) {
     if (import.meta.env.DEV) {
-      console.log(`✅ Acceso permitido a ${to.name} para ${usuarioActual.email}`)
+      console.log(`✅ Acceso permitido a ${to.name} para ${usuario.value.email}`)
     }
     next()
   } else {
-    // ❌ Sin autenticación
     if (import.meta.env.DEV) {
       console.warn(`⛔ Acceso rechazado a ${to.name} - redirigiendo a login`)
     }

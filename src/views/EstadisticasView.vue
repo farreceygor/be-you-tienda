@@ -161,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted} from 'vue'
 import { supabase } from '../lib/supabaseClient'
 import { fetchPedidos, fetchGastos } from '../services/productoService'
 
@@ -265,12 +265,15 @@ function formatFecha(iso) {
 }
 function formatMetodo(m) { return LABELS[m] || m }
 
+// ═══════════════════════════════════════════════════════════
+// REALTIME — variable a nivel de setup, para que ambos hooks la vean
+// ═══════════════════════════════════════════════════════════
+let subscription = null
+
 onMounted(async () => {
-  // Cargar datos una vez al montar
   await cargarDatos()
-  
-  // ✨ NUEVO: Escuchar cambios en la DB en tiempo real
-  const subscription = supabase
+
+  subscription = supabase
     .channel('cambios_pedidos')
     .on(
       'postgres_changes',
@@ -281,9 +284,11 @@ onMounted(async () => {
       }
     )
     .subscribe()
+})
 
-  // Limpiar subscription cuando se desmonta
-  onUnmounted(() => subscription.unsubscribe())
+// 👇 registrado de forma SÍNCRONA, al mismo nivel que onMounted
+onUnmounted(() => {
+  if (subscription) subscription.unsubscribe()
 })
 </script>
 
