@@ -535,7 +535,7 @@ const pedidosFiltrados = computed(() => {
   })
 })
 
-async function cargarHistorial() {
+/*async function cargarHistorial() {
   cargandoHistorial.value = true
   try {
     pedidos.value = await fetchPedidos()
@@ -544,7 +544,7 @@ async function cargarHistorial() {
   } finally {
     cargandoHistorial.value = false
   }
-}
+}*/
 
 function togglePedido(id) {
   pedidoExpandido.value = pedidoExpandido.value === id ? null : id
