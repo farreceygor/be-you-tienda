@@ -428,14 +428,14 @@ async function cerrarSesion() {
   }
 }
 
-async function cerrarSesion() {
+/*async function cerrarSesion() {
   try {
     await logout()
     productosCargados.value = []
   } catch (err) {
     mostrarToast('Error al cerrar sesión')
   }
-}
+}*/
 
 // ─── ESTADO ───────────────────────────────────────────────────────
 const vistaActual       = ref('inventario')
@@ -526,7 +526,6 @@ async function cargarInventario() {
     console.error('Error inesperado en cargarInventario:', err)
   }
 }
-
 // ─── FORMULARIO PRODUCTO ─────────────────────────────────────────
 const editandoId    = ref(null)
 const imagenArchivo = ref(null)
