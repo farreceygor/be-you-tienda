@@ -1,22 +1,92 @@
 import { supabase } from '../lib/supabaseClient'
+import { AppError, ErrorCodes } from '../lib/AppError'
+import { validarImagenProducto } from '../lib/fileValidator'
 
 /**
  * --- SECCIÓN: IMÁGENES ---
  */
+/**
+ * Sube una imagen de producto a Supabase Storage
+ * @param {File} archivo - Archivo de imagen
+ * @returns {Promise<string>} URL pública de la imagen
+ * @throws {AppError} Si hay error en validación o upload
+ */
 export const subirImagenProducto = async (archivo) => {
-  const nombreArchivo = `${Date.now()}_${archivo.name}`;
-  const { data, error } = await supabase.storage
-    .from('productos-img')
-    .upload(nombreArchivo, archivo);
+  try {
+    // 1. VALIDAR ARCHIVO
+    const datosArchivo = validarImagenProducto(archivo)
 
-  if (error) throw error;
+    if (import.meta.env.DEV) {
+      console.log('✅ Archivo validado:', datosArchivo)
+    }
 
-  const { data: publicUrl } = supabase.storage
-    .from('productos-img')
-    .getPublicUrl(nombreArchivo);
+    // 2. UPLOAD A SUPABASE
+    const { data, error } = await supabase.storage
+      .from('productos-img')
+      .upload(datosArchivo.nombreSeguro, archivo, {
+        cacheControl: '3600',  // Cache 1 hora
+        upsert: false          // No sobrescribir archivos existentes
+      })
 
-  return publicUrl.publicUrl;
-};
+    if (error) {
+      throw new AppError(
+        'Error al subir imagen a almacenamiento',
+        ErrorCodes.PRODUCTO_IMAGE_UPLOAD_ERROR,
+        {
+          supabaseCode: error.code,
+          supabaseMessage: error.message,
+          archivo: datosArchivo.nombreSeguro
+        },
+        500
+      )
+    }
+
+    if (!data) {
+      throw new AppError(
+        'Respuesta inválida del servidor de almacenamiento',
+        ErrorCodes.PRODUCTO_IMAGE_UPLOAD_ERROR,
+        { estado: 'data es null/undefined' },
+        500
+      )
+    }
+
+    // 3. OBTENER URL PÚBLICA
+    const { data: publicUrl } = supabase.storage
+      .from('productos-img')
+      .getPublicUrl(datosArchivo.nombreSeguro)
+
+    if (!publicUrl || !publicUrl.publicUrl) {
+      throw new AppError(
+        'No se pudo obtener la URL pública',
+        ErrorCodes.PRODUCTO_IMAGE_UPLOAD_ERROR,
+        { estado: 'publicUrl vacía' },
+        500
+      )
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('✅ Imagen subida exitosamente:', publicUrl.publicUrl.substring(0, 50) + '...')
+    }
+
+    return publicUrl.publicUrl
+  } catch (error) {
+    // Si ya es AppError, relanzar
+    if (error instanceof AppError) {
+      error.loguear()
+      throw error
+    }
+
+    // Envolver otros errores
+    const appError = new AppError(
+      'Error inesperado subiendo imagen',
+      ErrorCodes.PRODUCTO_IMAGE_UPLOAD_ERROR,
+      { mensaje: error.message },
+      500
+    )
+    appError.loguear()
+    throw appError
+  }
+}
 
 /**
  * --- SECCIÓN: PRODUCTOS & CATEGORÍAS ---
@@ -31,21 +101,67 @@ export const fetchCategorias = async () => {
   return data;
 };
 
+/**
+ * Trae los productos visibles en la tienda
+ * @returns {Promise<Array>} Array de productos
+ * @throws {AppError} Si hay error en la BD
+ */
 export const fetchProductos = async () => {
-  const { data, error } = await supabase
-    .from('productos')
-    .select(`*,categorias( nombre, slug )`)
-    .eq('visible_web', true)
-    .order('id', { ascending: true });
+  try {
+    const { data, error } = await supabase
+      .from('productos')
+      .select(`*,categorias( nombre, slug )`)
+      .eq('visible_web', true)
+      .order('id', { ascending: true })
 
-  if (error) throw error;
+    if (error) {
+      throw new AppError(
+        'No se pudieron cargar los productos',
+        ErrorCodes.DATABASE_ERROR,
+        { 
+          supabaseCode: error.code,
+          supabaseMessage: error.message,
+          tabla: 'productos'
+        },
+        500
+      )
+    }
 
-  return data.map(p => ({
-    ...p,
-    img: p.imagen_url, // Mantenemos compatibilidad con tus componentes
-    categoria: p.categorias?.slug || 'sin-categoria'
-  }));
-};
+    if (!data) {
+      throw new AppError(
+        'Respuesta inválida de la base de datos',
+        ErrorCodes.DATABASE_ERROR,
+        { estado: 'data es null/undefined' },
+        500
+      )
+    }
+
+    return data.map(p => ({
+      ...p,
+      img: p.imagen_url,
+      categoria: p.categorias?.slug || 'sin-categoria'
+    }))
+  } catch (error) {
+    // Si ya es AppError, simplemente relanzar
+    if (error instanceof AppError) {
+      error.loguear()
+      throw error
+    }
+
+    // Si es otro error, envolverlo
+    const appError = new AppError(
+      'Error inesperado al cargar productos',
+      ErrorCodes.UNKNOWN_ERROR,
+      { 
+        mensajeOriginal: error.message,
+        stack: import.meta.env.DEV ? error.stack : undefined
+      },
+      500
+    )
+    appError.loguear()
+    throw appError
+  }
+}
 
 /** Trae TODOS los productos (visibles + ocultos)
  * Lo usa AdminPanel.vue y CobranzaView.vue*/

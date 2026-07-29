@@ -403,6 +403,8 @@
 import { ref, computed, onMounted, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabaseClient'
+import { useAuth } from '../composables/useAuth'
+import { AppError } from '../lib/AppError'
 import {
   subirImagenProducto,
   crearProducto,
@@ -439,30 +441,37 @@ function irATienda()       { router.push({ name: 'tienda' }) }
 function irAGastos() { router.push({ name: 'gastos' }) }
 
 // ─── AUTH ─────────────────────────────────────────────────────────
-const usuarioLogueado = ref(null)
-const email           = ref('')
-const password        = ref('')
-const errorLogin      = ref('')
+const { usuario, cargando: cargandoAuth, error: errorAuth, login, logout } = useAuth()
+const email = ref('')
+const password = ref('')
+const errorLogin = ref('')
+
+// Alias para compatibilidad con el resto del código
+const usuarioLogueado = computed(() => usuario.value)
 
 async function iniciarSesion() {
-  cargando.value = true
   errorLogin.value = ''
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.value, password: password.value })
-    if (error) throw error
-    usuarioLogueado.value = data.user
+    await login(email.value, password.value)
+    email.value = ''
+    password.value = ''
     await inicializarDatos()
-  } catch {
-    errorLogin.value = 'Credenciales incorrectas ❌'
-  } finally {
-    cargando.value = false
+  } catch (err) {
+    if (err instanceof AppError) {
+      errorLogin.value = err.message
+    } else {
+      errorLogin.value = 'Error desconocido ❌'
+    }
   }
 }
 
 async function cerrarSesion() {
-  await supabase.auth.signOut()
-  usuarioLogueado.value = null
-  productosCargados.value = []
+  try {
+    await logout()
+    productosCargados.value = []
+  } catch (err) {
+    mostrarToast('Error al cerrar sesión')
+  }
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────────
