@@ -89,9 +89,55 @@ const router = createRouter({
 })
 
 let sesionVerificada = false
+let usuarioActual = null
 
+/**
+ * Verificar sesión una sola vez al iniciar la app
+ */
+async function verificarSesionInicial() {
+  if (sesionVerificada) return
+
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession()
+
+    if (error) {
+      console.error('❌ Error verificando sesión:', error)
+      usuarioActual = null
+    } else {
+      usuarioActual = session?.user || null
+      if (import.meta.env.DEV) {
+        console.log('✅ Sesión verificada:', usuarioActual?.email || 'sin sesión')
+      }
+    }
+
+    sesionVerificada = true
+  } catch (err) {
+    console.error('❌ Error inesperado en verificarSesionInicial:', err)
+    usuarioActual = null
+    sesionVerificada = true
+  }
+}
+
+/**
+ * Escuchar cambios de autenticación en tiempo real
+ */
+supabase.auth.onAuthStateChange((event, session) => {
+  usuarioActual = session?.user || null
+  if (import.meta.env.DEV) {
+    console.log(`🔔 Auth cambió (${event}):`, usuarioActual?.email || 'sin sesión')
+  }
+})
+
+/**
+ * Guard global del router
+ */
 router.beforeEach(async (to, from, next) => {
   document.title = to.meta.titulo || 'Be You'
+
+  // Verificar sesión la primera vez
+  if (!sesionVerificada) {
+    await verificarSesionInicial()
+  }
 
   // Si no requiere auth, permitir
   if (!to.meta.requiresAuth) {
@@ -99,22 +145,18 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // 🔑 ESTRATEGIA: Verificar sesión SOLO la primera vez
-  if (!sesionVerificada) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      usuario.value = session?.user || null
-      sesionVerificada = true
-    } catch (error) {
-      console.error('Error verificando sesión inicial:', error)
-      return next({ name: 'login' })
+  // Si requiere auth, verificar que haya usuario
+  if (usuarioActual?.email) {
+    // ✅ Usuario autenticado
+    if (import.meta.env.DEV) {
+      console.log(`✅ Acceso permitido a ${to.name} para ${usuarioActual.email}`)
     }
-  }
-
-  // Ahora SOLO verificar el estado actual (sin consultar servidor)
-  if (usuario.value) {
     next()
   } else {
+    // ❌ Sin autenticación
+    if (import.meta.env.DEV) {
+      console.warn(`⛔ Acceso rechazado a ${to.name} - redirigiendo a login`)
+    }
     next({ name: 'login', query: { redirect: to.fullPath } })
   }
 })
