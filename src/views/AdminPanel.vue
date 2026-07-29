@@ -803,8 +803,8 @@ async function inicializarDatos() {
 
 onMounted(async () => {
   const { data: { session } } = await supabase.auth.getSession()
-  usuarioLogueado.value = session?.user || null
-  if (usuarioLogueado.value) await inicializarDatos()
+  usuario.value = session?.user || null   // ✅ escribís en el ref real
+  if (usuario.value) await inicializarDatos()
 })
 </script>
 

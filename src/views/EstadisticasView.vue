@@ -162,6 +162,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { supabase } from '../lib/supabaseClient'
 import { fetchPedidos, fetchGastos } from '../services/productoService'
 
 const cargando = ref(true)
