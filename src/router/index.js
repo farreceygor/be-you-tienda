@@ -88,40 +88,34 @@ const router = createRouter({
   routes
 })
 
-/**
- * Guard global para proteger rutas
- */
+let sesionVerificada = false
+
 router.beforeEach(async (to, from, next) => {
-  // Actualizar título de página
   document.title = to.meta.titulo || 'Be You'
 
-  // Si NO requiere autenticación, permitir acceso
+  // Si no requiere auth, permitir
   if (!to.meta.requiresAuth) {
     next()
     return
   }
 
-  // Si está yendo a una ruta protegida, verificar sesión
-  try {
-    // Obtener sesión actual
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (session?.user) {
-      // ✅ Usuario autenticado, permitir acceso
-      if (import.meta.env.DEV) {
-        console.log(`✅ Acceso permitido a ${to.name} para ${session.user.email}`)
-      }
-      next()
-    } else {
-      // ❌ Sin autenticación, redirigir a login
-      if (import.meta.env.DEV) {
-        console.warn(`⛔ Acceso rechazado a ${to.name} - sin sesión, redirigiendo a login`)
-      }
-      next({ name: 'login', query: { redirect: to.fullPath } })
+  // 🔑 ESTRATEGIA: Verificar sesión SOLO la primera vez
+  if (!sesionVerificada) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      usuario.value = session?.user || null
+      sesionVerificada = true
+    } catch (error) {
+      console.error('Error verificando sesión inicial:', error)
+      return next({ name: 'login' })
     }
-  } catch (error) {
-    console.error('❌ Error verificando autenticación:', error)
-    next({ name: 'login' })
+  }
+
+  // Ahora SOLO verificar el estado actual (sin consultar servidor)
+  if (usuario.value) {
+    next()
+  } else {
+    next({ name: 'login', query: { redirect: to.fullPath } })
   }
 })
 

@@ -264,7 +264,26 @@ function formatFecha(iso) {
 }
 function formatMetodo(m) { return LABELS[m] || m }
 
-onMounted(cargarDatos)
+onMounted(async () => {
+  // Cargar datos una vez al montar
+  await cargarDatos()
+  
+  // ✨ NUEVO: Escuchar cambios en la DB en tiempo real
+  const subscription = supabase
+    .channel('cambios_pedidos')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'pedidos' },
+      () => {
+        console.log('📢 Pedidos actualizados, recargando...')
+        cargarDatos()
+      }
+    )
+    .subscribe()
+
+  // Limpiar subscription cuando se desmonta
+  onUnmounted(() => subscription.unsubscribe())
+})
 </script>
 
 <style scoped>

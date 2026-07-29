@@ -1,29 +1,6 @@
 <template>
-  <!-- LOGIN -->
-  <div v-if="!usuarioLogueado" class="login-wrap">
-    <div class="login-card">
-      <img src="https://abhcuuyqxyjmunfaosah.supabase.co/storage/v1/object/public/public-assets/logo.jpeg" alt="Be You" class="login-logo" />
-      <h2 class="login-title">Be You Admin</h2>
-      <p class="login-sub">Panel de control exclusivo</p>
-      <form @submit.prevent="iniciarSesion" class="login-form">
-        <div class="login-field">
-          <label>Correo</label>
-          <input v-model="email" type="email" placeholder="tu@correo.com" required />
-        </div>
-        <div class="login-field">
-          <label>Contraseña</label>
-          <input v-model="password" type="password" placeholder="••••••••" required />
-        </div>
-        <p v-if="errorLogin" class="login-error">{{ errorLogin }}</p>
-        <button type="submit" class="btn-login" :disabled="cargando">
-          {{ cargando ? 'Entrando...' : 'Entrar al panel' }}
-        </button>
-      </form>
-    </div>
-  </div>
-
   <!-- PANEL -->
-  <div v-else class="admin">
+  <div class="admin">
 
     <!-- SIDEBAR -->
     <aside class="sidebar">
@@ -442,26 +419,12 @@ function irAGastos() { router.push({ name: 'gastos' }) }
 
 // ─── AUTH ─────────────────────────────────────────────────────────
 const { usuario, cargando: cargandoAuth, error: errorAuth, login, logout } = useAuth()
-const email = ref('')
-const password = ref('')
-const errorLogin = ref('')
+const usuarioLogueado = computed(() => !!usuario.value)
 
-// Alias para compatibilidad con el resto del código
-const usuarioLogueado = computed(() => usuario.value)
-
-async function iniciarSesion() {
-  errorLogin.value = ''
-  try {
-    await login(email.value, password.value)
-    email.value = ''
-    password.value = ''
-    await inicializarDatos()
-  } catch (err) {
-    if (err instanceof AppError) {
-      errorLogin.value = err.message
-    } else {
-      errorLogin.value = 'Error desconocido ❌'
-    }
+async function cerrarSesion() {
+  if (confirm('¿Cerrar sesión?')) {
+    await logout()
+    router.push({ name: 'tienda' })
   }
 }
 
@@ -576,6 +539,7 @@ async function guardarProducto() {
     mostrarToast('📸 Falta la imagen del producto')
     return
   }
+  
   cargando.value = true
   try {
     let url = nuevoProducto.value.imagen_url
@@ -591,7 +555,15 @@ async function guardarProducto() {
     }
 
     if (editandoId.value) {
-      await supabase.from('productos').update(datosFinales).eq('id', editandoId.value)
+      // 🔧 CORREGIDO: Ahora con error handling
+      const { error } = await supabase
+        .from('productos')
+        .update(datosFinales)
+        .eq('id', editandoId.value)
+
+      if (error) {
+        throw new Error(`Error al actualizar: ${error.message}`)
+      }
       mostrarToast('✅ Producto actualizado')
     } else {
       await crearProducto(datosFinales)
@@ -603,6 +575,7 @@ async function guardarProducto() {
     cambiarVista('inventario')
   } catch (error) {
     mostrarToast('❌ Error: ' + error.message)
+    console.error('Error completo:', error)
   } finally {
     cargando.value = false
   }
@@ -738,7 +711,18 @@ function prepararNuevoBanner() {
 
 function prepararEdicionBanner(banner) {
   editandoBanner.value = banner.id
-  nuevoBanner.value = { ...banner }
+  // ✅ Copia profunda con todos los campos
+  nuevoBanner.value = {
+    titulo:       banner.titulo || '',
+    subtitulo:    banner.subtitulo || '',
+    eyebrow:      banner.eyebrow || '',
+    cta_texto:    banner.cta_texto || 'Ver productos',
+    cta_cat:      banner.cta_cat || 'todos',
+    gradiente:    banner.gradiente || gradientesPreset[0].value,
+    emoji_deco:   banner.emoji_deco || '✨',
+    orden:        banner.orden || 0,
+    activo:       banner.activo !== false
+  }
 }
 
 async function guardarBanner() {
@@ -749,9 +733,11 @@ async function guardarBanner() {
   cargando.value = true
   try {
     if (editandoBanner.value && editandoBanner.value !== -1) {
+      console.log('📝 Actualizando banner:', editandoBanner.value, nuevoBanner.value)
       await actualizarBanner(editandoBanner.value, nuevoBanner.value)
       mostrarToast('✅ Banner actualizado')
     } else {
+      console.log('✨ Creando banner:', nuevoBanner.value)
       await crearBanner(nuevoBanner.value)
       mostrarToast('✅ Banner creado')
     }
@@ -759,6 +745,7 @@ async function guardarBanner() {
     await cargarBanners()
   } catch (e) {
     mostrarToast('❌ Error al guardar: ' + e.message)
+    console.error('Error completo:', e)
   } finally {
     cargando.value = false
   }

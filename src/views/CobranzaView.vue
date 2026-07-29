@@ -618,14 +618,17 @@ function mostrarToast(msg) {
 }
 
 // ─── CICLO DE VIDA ───────────────────────────────────────────────
-onMounted(async () => {
+async function cargarHistorial() {
+  cargandoHistorial.value = true
   try {
-    todosLosProductos.value = await fetchProductosAdmin()
-    await cargarResumenHoy()
+    pedidos.value = await fetchPedidos()
+    await cargarResumenHoy()  // ← Refrescar resumen también
   } catch (e) {
-    mostrarToast('❌ Error al inicializar')
+    mostrarToast('❌ Error al cargar historial')
+  } finally {
+    cargandoHistorial.value = false
   }
-})
+}
 </script>
 
 <style scoped>
