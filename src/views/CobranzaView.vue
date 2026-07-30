@@ -535,17 +535,6 @@ const pedidosFiltrados = computed(() => {
   })
 })
 
-/*async function cargarHistorial() {
-  cargandoHistorial.value = true
-  try {
-    pedidos.value = await fetchPedidos()
-  } catch (e) {
-    mostrarToast('❌ Error al cargar historial')
-  } finally {
-    cargandoHistorial.value = false
-  }
-}*/
-
 function togglePedido(id) {
   pedidoExpandido.value = pedidoExpandido.value === id ? null : id
 }
@@ -629,6 +618,28 @@ async function cargarHistorial() {
     cargandoHistorial.value = false
   }
 }
+
+// ─── CARGAR PRODUCTOS AL MONTAR ─────────────────────────────────
+async function cargarProductosParaBusqueda() {
+  try {
+    const prods = await fetchProductosAdmin()
+    // fetchProductosAdmin devuelve un array directamente
+    todosLosProductos.value = prods || []
+    
+    if (import.meta.env.DEV) {
+      console.log('✅ Productos cargados para búsqueda:', todosLosProductos.value.length)
+    }
+  } catch (e) {
+    mostrarToast('❌ Error al cargar productos')
+    console.error('Error:', e)
+  }
+}
+
+// Y registra que se cargue al montar el componente
+onMounted(async () => {
+  await cargarProductosParaBusqueda()
+  await cargarResumenHoy()
+})
 </script>
 
 <style scoped>
