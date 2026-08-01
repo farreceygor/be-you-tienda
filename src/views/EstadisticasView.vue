@@ -67,7 +67,37 @@
   </span>
   <span class="metrica-card__delta delta--neutral">Ventas − Gastos</span>
 </div>
-      </div>
+      <!-- En el template, dentro de <div class="metricas"> -->
+<div class="metrica-card">
+  <span class="metrica-card__label">Efectivo este mes</span>
+  <span class="metrica-card__value" style="color: #2E7D32;">
+    ${{ metricasMetodos.efectivo.toLocaleString('es-AR') }}
+  </span>
+  <span class="metrica-card__delta delta--neutral">
+    {{ metricasMetodos.efectivoQty }} operaciones
+  </span>
+</div>
+
+<div class="metrica-card">
+  <span class="metrica-card__label">Transferencias este mes</span>
+  <span class="metrica-card__value" style="color: #4A8FA8;">
+    ${{ metricasMetodos.transferencia.toLocaleString('es-AR') }}
+  </span>
+  <span class="metrica-card__delta delta--neutral">
+    {{ metricasMetodos.transferenciaQty }} operaciones
+  </span>
+</div>
+<!--
+<div class="metrica-card">
+  <span class="metrica-card__label">Mercado Pago este mes</span>
+  <span class="metrica-card__value" style="color: #7A3350;">
+    ${{ metricasMetodos.mercadoPago.toLocaleString('es-AR') }}
+  </span>
+  <span class="metrica-card__delta delta--neutral">
+    {{ metricasMetodos.mercadoPagoQty }} operaciones
+  </span>
+</div>-->
+</div>
 
       <!-- GRÁFICOS -->
       <div class="graficos">
@@ -210,6 +240,48 @@ const metricas = computed(() => {
   const gananciaNeta = totalMesActual - gastosMes
   
   return { mesActual: Math.round(totalMesActual), pedidosMes: deMesActual.length, gastosMes: Math.round(gastosMes), gananciaNeta: Math.round(gananciaNeta), totalGeneral: Math.round(totalGeneral), deltaMes, deltaPedidos, ticketPromedio }
+})
+// AGREGAR DESPUÉS DEL computed de "metricas"
+const metricasMetodos = computed(() => {
+  const ahora       = new Date()
+  const mesActual   = ahora.getMonth()
+  const añoActual   = ahora.getFullYear()
+
+  // Filtrar solo pedidos de este mes
+  const deMesActual = pedidos.value.filter(p => {
+    const f = new Date(p.created_at)
+    return f.getMonth() === mesActual && f.getFullYear() === añoActual
+  })
+
+  // Agrupar por método de pago
+  const porMetodo = {
+    efectivo: { total: 0, qty: 0 },
+    transferencia: { total: 0, qty: 0 },
+    mercado_pago: { total: 0, qty: 0 },
+    debito: { total: 0, qty: 0 },
+    credito: { total: 0, qty: 0 }
+  }
+
+  deMesActual.forEach(pedido => {
+    const metodo = pedido.metodo_pago || 'efectivo'
+    if (porMetodo[metodo]) {
+      porMetodo[metodo].total += Number(pedido.total)
+      porMetodo[metodo].qty++
+    }
+  })
+
+  return {
+    efectivo: Math.round(porMetodo.efectivo.total),
+    efectivoQty: porMetodo.efectivo.qty,
+    transferencia: Math.round(porMetodo.transferencia.total),
+    transferenciaQty: porMetodo.transferencia.qty,
+    mercadoPago: Math.round(porMetodo.mercado_pago.total),
+    mercadoPagoQty: porMetodo.mercado_pago.qty,
+    debito: Math.round(porMetodo.debito.total),
+    debitoQty: porMetodo.debito.qty,
+    credito: Math.round(porMetodo.credito.total),
+    creditoQty: porMetodo.credito.qty
+  }
 })
 
 const ultimos7dias = computed(() => {
