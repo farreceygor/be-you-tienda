@@ -1,6 +1,5 @@
 <template>
   <div class="tienda">
-
     <!-- ═══════════════════════════════════════════
          NAVBAR
     ═══════════════════════════════════════════ -->
@@ -61,27 +60,6 @@
             {{ totalItems }}
           </span>
         </button>
-        <!-- BOTÓN ADMIN - DISCRETO -->
-<div class="admin-access">
-  <router-link
-    v-if="!usuario"
-    to="/login"
-    class="admin-icon-btn"
-    title="Acceso administrativo"
-  >
-    ⚙️
-  </router-link>
-
-  <button
-    v-else
-    @click="handleLogout"
-    class="admin-icon-btn admin-icon-btn--active"
-    :title="`Admin: ${usuario.email}`"
-  >
-    ⚙️
-  </button>
-</div>
-
       </div>
     </header>
 
@@ -385,15 +363,6 @@
         <img :src="visor.src" :alt="visor.alt" class="visor__img" @click.stop />
       </div>
     </transition>
-
-    <router-link
-      v-if="usuarioEsAdmin"
-      to="/admin"
-      class="admin-float"
-      title="Ir al panel"
-    >
-      ⚙️
-    </router-link>
     <!-- ═══════════════════════════════════════════
          WHATSAPP FLOTANTE
     ═══════════════════════════════════════════ -->
@@ -424,6 +393,7 @@ import { useCarrito } from '../composables/useCarrito'
 import { useProductos } from '../composables/useProductos'
 import { fetchProductos, fetchCategorias, fetchBanners } from '../services/productoService'
 
+const router = useRouter()
 
 // ─── ESTADO UI ───────────────────────────────────────────────────
 const scrolled       = ref(false)
@@ -447,21 +417,6 @@ const {
   onSearchInput,
   cargarDatos
 } = useProductos()
-
-// ─── AUTENTICACIÓN ──────────────────────────────────
-    const router = useRouter()
-    const { usuario, logout } = useAuth()
-
-    async function handleLogout() {
-      if (confirm('¿Cerrar sesión?')) {
-        try {
-          await logout()
-          mostrarToast('✅ Sesión cerrada')
-        } catch (err) {
-          mostrarToast('❌ Error al cerrar sesión')
-        }
-      }
-    }
 
 // Wrapper — cierra dropdown y hace scroll además de filtrar
 function filterCat(nombre) {
@@ -610,59 +565,6 @@ onUnmounted(() => {
   color: var(--charcoal);
   font-family: 'Poppins', system-ui, sans-serif;
   min-height: 100vh;
-}
-
-/* ─────────────────────────────────────────────────────── */
-/* BOTÓN ADMIN DISCRETO                                    */
-/* ─────────────────────────────────────────────────────── */
-
-.admin-access {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: transparent;
-  border: 1px solid #ddd;
-  font-size: 18px;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  color: #999;
-}
-
-.admin-icon-btn:hover {
-  background: #f5f5f5;
-  border-color: #C9748A;
-  color: #C9748A;
-  transform: scale(1.1);
-}
-
-/* Si está logueado, mostrar diferente */
-.admin-icon-btn--active {
-  background: #f0f0f0;
-  border-color: #C9748A;
-  color: #C9748A;
-}
-
-.admin-icon-btn--active:hover {
-  background: #C9748A;
-  color: white;
-}
-
-@media (max-width: 768px) {
-  .admin-icon-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-  }
 }
 
 /* ═══ NAVBAR ═══ */
@@ -1549,38 +1451,6 @@ onUnmounted(() => {
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-right-enter-from, .slide-right-leave-to { transform: translateX(100%); }
-
 .toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
-
-/* BOTÓN ADMIN FLOTANTE */
-.admin-float {
-  position: fixed;
-  bottom: 24px;
-  right: 100px; /* A la izquierda del WhatsApp */
-  width: 56px;
-  height: 56px;
-  background: #4A90E2;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
-  z-index: 200;
-  transition: transform var(--trans), box-shadow var(--trans);
-  text-decoration: none;
-  font-size: 24px;
-}
-
-.admin-float:hover {
-  transform: scale(1.1);
-  box-shadow: 0 8px 28px rgba(74, 144, 226, 0.5);
-}
-
-@media (max-width: 480px) {
-  .admin-float {
-    bottom: 90px; /* Arriba en móvil para no chocar con WhatsApp */
-  }
-}
 </style>
