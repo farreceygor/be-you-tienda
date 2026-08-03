@@ -87,16 +87,26 @@
     {{ metricasMetodos.transferenciaQty }} operaciones
   </span>
 </div>
-<!--
+
 <div class="metrica-card">
-  <span class="metrica-card__label">Mercado Pago este mes</span>
-  <span class="metrica-card__value" style="color: #7A3350;">
-    ${{ metricasMetodos.mercadoPago.toLocaleString('es-AR') }}
+  <span class="metrica-card__label">Efectivo (Histórico Total)</span>
+  <span class="metrica-card__value" style="color: #2E7D32;">
+    ${{ metricasMetodosHistorico.efectivo.toLocaleString('es-AR') }}
   </span>
   <span class="metrica-card__delta delta--neutral">
-    {{ metricasMetodos.mercadoPagoQty }} operaciones
+    {{ metricasMetodosHistorico.efectivoQty }} transacciones
   </span>
-</div>-->
+</div>
+
+<div class="metrica-card">
+  <span class="metrica-card__label">Transferencias (Histórico Total)</span>
+  <span class="metrica-card__value" style="color: #4A8FA8;">
+    ${{ metricasMetodosHistorico.transferencia.toLocaleString('es-AR') }}
+  </span>
+  <span class="metrica-card__delta delta--neutral">
+    {{ metricasMetodosHistorico.transferenciaQty }} transacciones
+  </span>
+</div>
 </div>
 
       <!-- GRÁFICOS -->
@@ -241,7 +251,7 @@ const metricas = computed(() => {
   
   return { mesActual: Math.round(totalMesActual), pedidosMes: deMesActual.length, gastosMes: Math.round(gastosMes), gananciaNeta: Math.round(gananciaNeta), totalGeneral: Math.round(totalGeneral), deltaMes, deltaPedidos, ticketPromedio }
 })
-// AGREGAR DESPUÉS DEL computed de "metricas"
+
 const metricasMetodos = computed(() => {
   const ahora       = new Date()
   const mesActual   = ahora.getMonth()
@@ -263,6 +273,39 @@ const metricasMetodos = computed(() => {
   }
 
   deMesActual.forEach(pedido => {
+    const metodo = pedido.metodo_pago || 'efectivo'
+    if (porMetodo[metodo]) {
+      porMetodo[metodo].total += Number(pedido.total)
+      porMetodo[metodo].qty++
+    }
+  })
+
+  return {
+    efectivo: Math.round(porMetodo.efectivo.total),
+    efectivoQty: porMetodo.efectivo.qty,
+    transferencia: Math.round(porMetodo.transferencia.total),
+    transferenciaQty: porMetodo.transferencia.qty,
+    mercadoPago: Math.round(porMetodo.mercado_pago.total),
+    mercadoPagoQty: porMetodo.mercado_pago.qty,
+    debito: Math.round(porMetodo.debito.total),
+    debitoQty: porMetodo.debito.qty,
+    credito: Math.round(porMetodo.credito.total),
+    creditoQty: porMetodo.credito.qty
+  }
+})
+
+const metricasMetodosHistorico = computed(() => {
+  // Acumula TODO el historial de pedidos (sin filtro de mes)
+  const porMetodo = {
+    efectivo: { total: 0, qty: 0 },
+    transferencia: { total: 0, qty: 0 },
+    mercado_pago: { total: 0, qty: 0 },
+    debito: { total: 0, qty: 0 },
+    credito: { total: 0, qty: 0 }
+  }
+
+  // Recorrer TODOS los pedidos históricos
+  pedidos.value.forEach(pedido => {
     const metodo = pedido.metodo_pago || 'efectivo'
     if (porMetodo[metodo]) {
       porMetodo[metodo].total += Number(pedido.total)
