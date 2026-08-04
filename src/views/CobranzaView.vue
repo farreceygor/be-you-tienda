@@ -174,7 +174,7 @@
     <button class="venta-item__remove" @click="quitarItem(idx)">✕</button>
   </div>
 
-  <!-- ✅ CARRITO FLOTANTE - Resumen visual -->
+  <!-- ✅ CARRITO FLOTANTE - Resumen visual 
   <div v-if="itemsVenta.length > 0" class="carrito-flotante">
             <div class="carrito-flotante__item">
               <span>📦 {{ itemsVenta.length }} {{ itemsVenta.length === 1 ? 'producto' : 'productos' }}</span>
@@ -195,51 +195,59 @@
               <strong>💳 Total:</strong>
               <strong class="carrito-flotante__total-value">${{ totalVenta.toLocaleString('es-AR') }}</strong>
             </div>
+          </div>-->
+
+<!-- DESCUENTO GENERAL -->
+<div class="descuento-general">
+            <span class="descuento-general__label">💰 Descuento general</span>
+            <div class="descuento-general__controles">
+              <select
+                v-model="descuentoGeneral.tipo"
+                class="item-descuento__select"
+                @change="onDescuentoGeneralChange"
+              >
+                <option :value="null">Sin descuento</option>
+                <option value="porcentaje">% Porcentaje</option>
+                <option value="monto">$ Monto fijo</option>
+              </select>
+              <input
+                v-if="descuentoGeneral.tipo"
+                v-model.number="descuentoGeneral.valor"
+                type="number"
+                min="0"
+                class="item-descuento__input"
+                :placeholder="descuentoGeneral.tipo === 'porcentaje' ? '10' : '1000'"
+              />
+            </div>
           </div>
 
-  <!-- Descuento general -->
-  <div class="descuento-general">
-    <span class="descuento-general__label">Descuento general</span>
-    <div class="descuento-general__controles">
-      <select
-        v-model="descuentoGeneral.tipo"
-        class="item-descuento__select"
-        @change="onDescuentoGeneralChange"
-      >
-        <option :value="null">Sin descuento</option>
-        <option value="porcentaje">% Porcentaje</option>
-        <option value="monto">$ Monto fijo</option>
-      </select>
-      <input
-        v-if="descuentoGeneral.tipo"
-        v-model.number="descuentoGeneral.valor"
-        type="number"
-        min="0"
-        class="item-descuento__input"
-        :placeholder="descuentoGeneral.tipo === 'porcentaje' ? '10' : '1000'"
-      />
-    </div>
-  </div>
+          <!-- ✅ CARRITO FLOTANTE - Único resumen de totales -->
+          <div class="carrito-flotante">
+            <div class="carrito-flotante__row">
+  <span class="carrito-flotante__label">📦 Unidades:</span>
+  <span class="carrito-flotante__value">{{ cantidadTotalProductos }}</span>
+</div>
 
-  <!-- Resumen de totales -->
-  <div class="totales">
-    <div class="totales__fila" v-if="descuentoGeneralMonto > 0 || itemsVenta.some(i => i.descuento_monto > 0)">
-      <span>Subtotal</span>
-      <span>${{ subtotalItems.toLocaleString('es-AR') }}</span>
-    </div>
-    <div class="totales__fila totales__fila--descuento" v-if="itemsVenta.some(i => i.descuento_monto > 0)">
-      <span>Descuentos por item</span>
-      <span>-${{ itemsVenta.reduce((a,i) => a + i.descuento_monto, 0).toLocaleString('es-AR') }}</span>
-    </div>
-    <div class="totales__fila totales__fila--descuento" v-if="descuentoGeneralMonto > 0">
-      <span>Descuento general</span>
-      <span>-${{ descuentoGeneralMonto.toLocaleString('es-AR') }}</span>
-    </div>
-    <div class="totales__fila totales__fila--total">
-      <span>Total</span>
-      <strong>${{ totalVenta.toLocaleString('es-AR') }}</strong>
-    </div>
-  </div>
+            <div class="carrito-flotante__row">
+              <span class="carrito-flotante__label">Subtotal:</span>
+              <span class="carrito-flotante__value">${{ subtotalItems.toLocaleString('es-AR') }}</span>
+            </div>
+            
+            <div v-if="itemsVenta.some(i => i.descuento_monto > 0)" class="carrito-flotante__row carrito-flotante__row--descuento">
+              <span class="carrito-flotante__label">🏷️ Desc. items:</span>
+              <span class="carrito-flotante__value">-${{ itemsVenta.reduce((a,i) => a + i.descuento_monto, 0).toLocaleString('es-AR') }}</span>
+            </div>
+
+            <div v-if="descuentoGeneralMonto > 0" class="carrito-flotante__row carrito-flotante__row--descuento">
+              <span class="carrito-flotante__label">💰 Desc. gral:</span>
+              <span class="carrito-flotante__value">-${{ descuentoGeneralMonto.toLocaleString('es-AR') }}</span>
+            </div>
+            
+            <div class="carrito-flotante__row carrito-flotante__row--total">
+              <span class="carrito-flotante__label">💳 TOTAL:</span>
+              <span class="carrito-flotante__value--total">${{ totalVenta.toLocaleString('es-AR') }}</span>
+            </div>
+          </div>
 </div>
       </div>
 
@@ -363,6 +371,7 @@ import {
 } from '../services/productoService.js'
 import { actualizarEstadoPedido } from '../services/productoService.js'
 import { useCarrito } from '../composables/useCarrito'
+import { logger } from '../lib/logger'
 
 // ─── ESTADO GENERAL ──────────────────────────────────────────────
 const vistaActual = ref('nueva')
@@ -473,6 +482,10 @@ const totalVenta = computed(() =>
   Math.max(0, subtotalItems.value - descuentoGeneralMonto.value)
 )
 
+const cantidadTotalProductos = computed(() =>
+  itemsVenta.value.reduce((total, item) => total + item.cantidad, 0)
+)
+
 function onDescuentoGeneralChange() {
   if (!descuentoGeneral.tipo) descuentoGeneral.valor = 0
 }
@@ -546,9 +559,14 @@ async function confirmarVenta() {
     // Pausa visual
     await new Promise(r => setTimeout(r, 800))
   } catch (e) {
-    mostrarToast('❌ Error al guardar: ' + e.message)
-  } finally {
-    cargando.value = false
+    // ✅ USAR LOGGER ESTRUCTURADO
+    if (e instanceof AppError) {
+      logger.error('Error en confirmarVenta (AppError)', e)
+      mostrarToast(`❌ ${e.message}`)
+    } else {
+      logger.error('Error inesperado en confirmarVenta', e)
+      mostrarToast('❌ Error inesperado, contacta al admin')
+    }
   }
 }
 
@@ -641,9 +659,12 @@ function mostrarToast(msg) {
 async function cargarHistorial() {
   cargandoHistorial.value = true
   try {
+    logger.debug('Cargando historial de cobranza')
     pedidos.value = await fetchPedidos()
-    await cargarResumenHoy()  // ← Refrescar resumen también
+    await cargarResumenHoy()
+    logger.info('Historial cargado', { cantidad: pedidos.value.length })
   } catch (e) {
+    logger.error('Error cargando historial', e)
     mostrarToast('❌ Error al cargar historial')
   } finally {
     cargandoHistorial.value = false
@@ -796,18 +817,6 @@ onMounted(async () => {
 .item-descuento__input:focus { outline: none; }
 .item-descuento__badge { font-size: 11px; font-weight: 600; color: #2E7D32; background: #E8F5E8; padding: 2px 6px; border-radius: 10px; }
 
-/* DESCUENTO GENERAL */
-.descuento-general { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px dashed var(--border); margin-top: 8px; flex-wrap: wrap; gap: 8px; }
-.descuento-general__label { font-size: 13px; font-weight: 500; color: var(--mid); }
-.descuento-general__controles { display: flex; gap: 6px; align-items: center; }
-
-/* TOTALES */
-.totales { border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-.totales__fila { display: flex; justify-content: space-between; font-size: 13px; color: var(--mid); }
-.totales__fila--descuento { color: #2E7D32; font-weight: 500; }
-.totales__fila--total { display: flex; justify-content: space-between; font-size: 14px; color: var(--charcoal); padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
-.totales__fila--total strong { font-size: 20px; font-weight: 700; }
-
 /* FORMULARIO */
 .form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
 @media (min-width: 540px) { .form-grid { grid-template-columns: 1fr 1fr; } }
@@ -875,79 +884,87 @@ onMounted(async () => {
 .toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 /* ═══════════════════════════════════════════════════════════
-   CARRITO FLOTANTE - Resumen visual de totales
+   CARRITO FLOTANTE - Resumen único de totales
 ═══════════════════════════════════════════════════════════ */
 .carrito-flotante {
   background: linear-gradient(135deg, var(--rose-light) 0%, rgba(201, 116, 138, 0.08) 100%);
-  border: 1.5px solid var(--rose);
+  border: 2px solid var(--rose);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 16px;
   margin: 16px 0;
-  border-left: 5px solid var(--rose-dark);
+  border-left: 6px solid var(--rose-dark);
+  backdrop-filter: blur(4px);
 }
 
-.carrito-flotante__item {
+.carrito-flotante__row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
-  margin-bottom: 8px;
+  padding: 8px 0;
+  font-size: 14px;
   color: var(--charcoal);
   font-weight: 500;
+  border-bottom: 1px solid rgba(201, 116, 138, 0.2);
 }
 
-.carrito-flotante__item:last-of-type {
-  margin-bottom: 0;
+.carrito-flotante__row:last-child {
+  border-bottom: none;
+}
+
+.carrito-flotante__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
 }
 
 .carrito-flotante__value {
+  font-weight: 700;
+  text-align: right;
   color: var(--charcoal);
-  font-weight: 700;
 }
 
-.carrito-flotante__item--descuento {
+.carrito-flotante__row--descuento {
   color: #2E7D32;
 }
 
-.carrito-flotante__item--descuento .carrito-flotante__value {
+.carrito-flotante__row--descuento .carrito-flotante__value {
   color: #2E7D32;
   font-weight: 700;
 }
 
-.carrito-flotante__total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 15px;
-  font-weight: 700;
+.carrito-flotante__row--total {
+  background: rgba(201, 116, 138, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin: 8px 0;
+  border: none;
+  font-size: 16px;
+  font-weight: 800;
   color: var(--rose-dark);
-  padding-top: 10px;
-  border-top: 2px solid rgba(201, 116, 138, 0.3);
-  margin-top: 10px;
 }
 
-.carrito-flotante__total-value {
-  font-size: 18px;
+.carrito-flotante__value--total {
+  font-size: 24px;
+  font-weight: 800;
   color: var(--rose-dark);
+  text-align: right;
 }
 
 /* Responsive */
 @media (max-width: 480px) {
   .carrito-flotante {
-    padding: 12px;
-    margin: 12px 0;
+    padding: 14px;
+    margin: 14px 0;
   }
   
-  .carrito-flotante__item {
-    font-size: 12px;
+  .carrito-flotante__row {
+    font-size: 13px;
+    padding: 7px 0;
   }
   
-  .carrito-flotante__total {
-    font-size: 14px;
-  }
-  
-  .carrito-flotante__total-value {
-    font-size: 16px;
+  .carrito-flotante__value--total {
+    font-size: 20px;
   }
 }
 </style>
