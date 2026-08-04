@@ -204,6 +204,7 @@
 import { ref, computed, onMounted, onUnmounted} from 'vue'
 import { supabase } from '../lib/supabaseClient'
 import { fetchPedidos, fetchGastos } from '../services/productoService'
+import { logger } from '../lib/logger'
 
 const cargando = ref(true)
 const pedidos = ref([])
@@ -212,11 +213,16 @@ const gastos = ref([])
 async function cargarDatos() {
   cargando.value = true
   try {
+    logger.debug('Cargando datos de estadísticas')
     const [p, g] = await Promise.all([fetchPedidos(), fetchGastos()])
     pedidos.value = p
     gastos.value  = g
+    logger.info('Estadísticas cargadas', { 
+      pedidos: p.length, 
+      gastos: g.length 
+    })
   } catch (e) {
-    console.error('Error cargando estadísticas:', e)
+    logger.error('Error cargando estadísticas', e)
   } finally {
     cargando.value = false
   }
