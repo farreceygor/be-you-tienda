@@ -2,6 +2,7 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { supabase } from '../lib/supabaseClient'
 import { AppError, ErrorCodes } from '../lib/AppError'
+import { logger } from '../lib/logger'
 
 // ═══════════════════════════════════════════════════════════
 // ESTADO SINGLETON — compartido por toda la app (router incluido)
@@ -18,6 +19,8 @@ export function useAuth() {
     error.value = null
 
     try {
+      logger.debug('Verificando sesión de usuario')
+      
       const { data: { session }, error: err } = await supabase.auth.getSession()
 
       if (err) {
@@ -31,17 +34,18 @@ export function useAuth() {
 
       usuario.value = session?.user || null
 
-      if (import.meta.env.DEV) {
-        console.log('✅ Sesión verificada:', usuario.value?.email || 'sin sesión')
-      }
+      logger.info('Sesión verificada', { 
+        email: usuario.value?.email || 'sin sesión'
+      })
 
       // Registramos el listener UNA sola vez para toda la app
       if (!listenerRegistrado) {
         supabase.auth.onAuthStateChange((event, session) => {
           usuario.value = session?.user || null
-          if (import.meta.env.DEV) {
-            console.log('🔔 Evento auth:', event, usuario.value?.email || 'sin sesión')
-          }
+          logger.debug('Evento auth state changed', { 
+            event,
+            email: usuario.value?.email || 'sin sesión'
+          })
         })
         listenerRegistrado = true
       }
@@ -79,9 +83,12 @@ export function useAuth() {
         throw new AppError('Contraseña requerida', ErrorCodes.AUTH_INVALID_CREDENTIALS, {}, 400)
       }
 
+      logger.debug('Intentando login', { email })
+
       const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
 
       if (err) {
+        logger.warn('Login fallido - Credenciales inválidas', { email })
         throw new AppError(
           'Credenciales incorrectas o usuario no existe',
           ErrorCodes.AUTH_INVALID_CREDENTIALS,
@@ -96,9 +103,7 @@ export function useAuth() {
 
       usuario.value = data.user
 
-      if (import.meta.env.DEV) {
-        console.log('✅ Login exitoso:', data.user.email)
-      }
+      logger.info('Login exitoso', { email: data.user.email })
 
       return data
     } catch (err) {
@@ -121,6 +126,8 @@ export function useAuth() {
     error.value = null
 
     try {
+      logger.debug('Cerrando sesión', { email: usuario.value?.email })
+
       const { error: err } = await supabase.auth.signOut()
 
       if (err) {
@@ -129,9 +136,7 @@ export function useAuth() {
 
       usuario.value = null
 
-      if (import.meta.env.DEV) {
-        console.log('✅ Logout exitoso')
-      }
+      logger.info('Logout exitoso')
     } catch (err) {
       if (err instanceof AppError) {
         error.value = err.message
