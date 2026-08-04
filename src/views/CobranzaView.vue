@@ -174,6 +174,29 @@
     <button class="venta-item__remove" @click="quitarItem(idx)">✕</button>
   </div>
 
+  <!-- ✅ CARRITO FLOTANTE - Resumen visual -->
+  <div v-if="itemsVenta.length > 0" class="carrito-flotante">
+            <div class="carrito-flotante__item">
+              <span>📦 {{ itemsVenta.length }} {{ itemsVenta.length === 1 ? 'producto' : 'productos' }}</span>
+              <span class="carrito-flotante__value">${{ subtotalItems.toLocaleString('es-AR') }}</span>
+            </div>
+            
+            <div v-if="itemsVenta.some(i => i.descuento_monto > 0)" class="carrito-flotante__item carrito-flotante__item--descuento">
+              <span>🏷️ Descuentos por item</span>
+              <span>-${{ itemsVenta.reduce((a,i) => a + i.descuento_monto, 0).toLocaleString('es-AR') }}</span>
+            </div>
+
+            <div v-if="descuentoGeneralMonto > 0" class="carrito-flotante__item carrito-flotante__item--descuento">
+              <span>💰 Descuento general</span>
+              <span>-${{ descuentoGeneralMonto.toLocaleString('es-AR') }}</span>
+            </div>
+            
+            <div class="carrito-flotante__total">
+              <strong>💳 Total:</strong>
+              <strong class="carrito-flotante__total-value">${{ totalVenta.toLocaleString('es-AR') }}</strong>
+            </div>
+          </div>
+
   <!-- Descuento general -->
   <div class="descuento-general">
     <span class="descuento-general__label">Descuento general</span>
@@ -851,4 +874,80 @@ onMounted(async () => {
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--charcoal); color: white; padding: 10px 18px; border-radius: 50px; font-size: 13px; z-index: 999; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.2); pointer-events: none; }
 .toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
+/* ═══════════════════════════════════════════════════════════
+   CARRITO FLOTANTE - Resumen visual de totales
+═══════════════════════════════════════════════════════════ */
+.carrito-flotante {
+  background: linear-gradient(135deg, var(--rose-light) 0%, rgba(201, 116, 138, 0.08) 100%);
+  border: 1.5px solid var(--rose);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin: 16px 0;
+  border-left: 5px solid var(--rose-dark);
+}
+
+.carrito-flotante__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--charcoal);
+  font-weight: 500;
+}
+
+.carrito-flotante__item:last-of-type {
+  margin-bottom: 0;
+}
+
+.carrito-flotante__value {
+  color: var(--charcoal);
+  font-weight: 700;
+}
+
+.carrito-flotante__item--descuento {
+  color: #2E7D32;
+}
+
+.carrito-flotante__item--descuento .carrito-flotante__value {
+  color: #2E7D32;
+  font-weight: 700;
+}
+
+.carrito-flotante__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--rose-dark);
+  padding-top: 10px;
+  border-top: 2px solid rgba(201, 116, 138, 0.3);
+  margin-top: 10px;
+}
+
+.carrito-flotante__total-value {
+  font-size: 18px;
+  color: var(--rose-dark);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .carrito-flotante {
+    padding: 12px;
+    margin: 12px 0;
+  }
+  
+  .carrito-flotante__item {
+    font-size: 12px;
+  }
+  
+  .carrito-flotante__total {
+    font-size: 14px;
+  }
+  
+  .carrito-flotante__total-value {
+    font-size: 16px;
+  }
+}
 </style>
