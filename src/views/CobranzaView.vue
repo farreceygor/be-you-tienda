@@ -46,10 +46,45 @@
 
     <!-- ═══ NUEVA VENTA ═══ -->
     <div v-if="vistaActual === 'nueva'" class="panel">
+      <div class="panel__section">
+    <h2 class="panel__title">1. Datos del cliente y pago</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre del cliente</label>
+        <input v-model="datosPedido.cliente" type="text" placeholder="Opcional" />
+      </div>
+      <div class="form-group">
+        <label>Teléfono</label>
+        <input v-model="datosPedido.telefono" type="text" placeholder="Opcional" />
+      </div>
+      <div class="form-group">
+        <label>Método de pago</label>
+        <select v-model="datosPedido.metodo_pago">
+          <option value="efectivo">💵 Efectivo</option>
+          <option value="transferencia">🏦 Transferencia</option>
+          <option value="mercado_pago">📱 Mercado Pago</option>
+          <option value="debito">💳 Débito</option>
+          <option value="credito">💳 Crédito</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select v-model="datosPedido.estado">
+          <option value="pagado">✅ Pagado</option>
+          <option value="pendiente">⏳ Pendiente</option>
+          <option value="señado">💰 Señado</option>
+        </select>
+      </div>
+      <div class="form-group form-group--full">
+        <label>Notas</label>
+        <input v-model="datosPedido.notas" type="text" placeholder="Observaciones adicionales..." />
+      </div>
+    </div>
+  </div>
 
       <!-- Buscador de productos -->
       <div class="panel__section">
-        <h2 class="panel__title">1. Agregá productos</h2>
+        <h2 class="panel__title">2. Agregá productos</h2>
         <div class="prod-search">
           <div class="prod-search__input-wrap">
             <span class="prod-search__icon">🔍</span>
@@ -185,49 +220,10 @@
 </div>
       </div>
 
-      <!-- Datos del cliente y pago -->
       <div v-if="itemsVenta.length > 0" class="panel__section">
-        <h2 class="panel__title">2. Datos del cliente y pago</h2>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Nombre del cliente</label>
-            <input v-model="datosPedido.cliente" type="text" placeholder="Opcional" />
-          </div>
-          <div class="form-group">
-            <label>Teléfono</label>
-            <input v-model="datosPedido.telefono" type="text" placeholder="Opcional" />
-          </div>
-          <div class="form-group">
-            <label>Método de pago</label>
-            <select v-model="datosPedido.metodo_pago">
-              <option value="efectivo">💵 Efectivo</option>
-              <option value="transferencia">🏦 Transferencia</option>
-              <option value="mercado_pago">📱 Mercado Pago</option>
-              <option value="debito">💳 Débito</option>
-              <option value="credito">💳 Crédito</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Estado</label>
-            <select v-model="datosPedido.estado">
-              <option value="pagado">✅ Pagado</option>
-              <option value="pendiente">⏳ Pendiente</option>
-              <option value="señado">💰 Señado</option>
-            </select>
-          </div>
-          <div class="form-group form-group--full">
-            <label>Notas</label>
-            <input v-model="datosPedido.notas" type="text" placeholder="Observaciones adicionales..." />
-          </div>
-        </div>
-
-        <button
-          class="btn-confirmar"
-          :disabled="cargando || itemsVenta.length === 0"
-          @click="confirmarVenta"
-        >
-          {{ cargando ? 'Guardando...' : '✓ Confirmar venta' }}
-        </button>
+    <button class="btn-confirmar" :disabled="cargando" @click="confirmarVenta">
+      {{ cargando ? 'Guardando...' : '✓ Confirmar venta' }}
+    </button>
       </div>
     </div>
 
