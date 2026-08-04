@@ -616,3 +616,62 @@ export const eliminarGasto = async (id) => {
   if (error) throw error
   return { success: true }
 }
+
+/**
+ * Valida que todos los productos en la venta tengan stock disponible
+ * @param {Array} items - Items de la venta actual
+ * @returns {Object} { valido: bool, error: string }
+ */
+export const validarStockVenta = async (items) => {
+  try {
+    // Obtener stock actual de BD para cada producto
+    const idsProductos = items
+      .filter(i => i.producto_id) // Solo los que tienen ID real
+      .map(i => i.producto_id)
+
+    if (idsProductos.length === 0) {
+      return { valido: true, error: null }
+    }
+
+    // Traer datos actuales de la BD
+    const { data: productosActuales, error: errorFetch } = await supabase
+      .from('productos')
+      .select('id, nombre, stock')
+      .in('id', idsProductos)
+
+    if (errorFetch) {
+      return { 
+        valido: false, 
+        error: 'No se pudo verificar stock en la BD' 
+      }
+    }
+
+    // Validar que cada item tenga stock suficiente
+    for (const item of items) {
+      if (!item.producto_id) continue
+
+      const prodActual = productosActuales.find(p => p.id === item.producto_id)
+      if (!prodActual) {
+        return {
+          valido: false,
+          error: `Producto "${item.nombre}" no encontrado`
+        }
+      }
+
+      if (prodActual.stock < item.cantidad) {
+        return {
+          valido: false,
+          error: `"${prodActual.nombre}" solo tiene ${prodActual.stock} en stock, querés ${item.cantidad}`
+        }
+      }
+    }
+
+    return { valido: true, error: null }
+  } catch (error) {
+    console.error('Error validando stock:', error)
+    return {
+      valido: false,
+      error: 'Error inesperado validando stock'
+    }
+  }
+}

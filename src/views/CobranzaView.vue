@@ -339,7 +339,8 @@ import {
   crearPedido,
   fetchPedidos,
   fetchPedidosHoy,
-  anularPedido
+  anularPedido,
+  validarStockVenta
 } from '../services/productoService.js'
 import { actualizarEstadoPedido } from '../services/productoService.js'
 import { useCarrito } from '../composables/useCarrito'
@@ -484,6 +485,14 @@ const datosPedido = reactive({
 
 async function confirmarVenta() {
   if (itemsVenta.value.length === 0) return
+  
+  // ✅ VALIDAR STOCK ANTES DE PROCESAR
+  const validacion = await validarStockVenta(itemsVenta.value)
+  if (!validacion.valido) {
+    mostrarToast(`⚠️ ${validacion.error}`)
+    return // Detener si hay problemas de stock
+  }
+
   cargando.value = true
   try {
     const cabecera = {
@@ -514,6 +523,9 @@ async function confirmarVenta() {
     await cargarResumenHoy()
     todosLosProductos.value = await fetchProductos()
     mostrarToast('✅ Venta registrada correctamente')
+    
+    // Pausa visual
+    await new Promise(r => setTimeout(r, 800))
   } catch (e) {
     mostrarToast('❌ Error al guardar: ' + e.message)
   } finally {
