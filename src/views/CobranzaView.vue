@@ -361,6 +361,7 @@ import {
   actualizarMetodoPagoPedido
 } from '../services/productoService.js'
 import { useCarrito } from '../composables/useCarrito'
+import { AppError } from '../lib/AppError'
 import { logger } from '../lib/logger'
 
 // ─── ESTADO GENERAL ──────────────────────────────────────────────
@@ -557,7 +558,9 @@ async function confirmarVenta() {
       logger.error('Error inesperado en confirmarVenta', e)
       mostrarToast('❌ Error inesperado, contacta al admin')
     }
-  }
+  } finally {
+      cargando.value = false
+    }
 }
 
 // ─── HISTORIAL ───────────────────────────────────────────────────
