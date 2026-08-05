@@ -174,30 +174,6 @@
     <button class="venta-item__remove" @click="quitarItem(idx)">✕</button>
   </div>
 
-  <!-- ✅ CARRITO FLOTANTE - Resumen visual 
-  <div v-if="itemsVenta.length > 0" class="carrito-flotante">
-            <div class="carrito-flotante__item">
-              <span>📦 {{ itemsVenta.length }} {{ itemsVenta.length === 1 ? 'producto' : 'productos' }}</span>
-              <span class="carrito-flotante__value">${{ subtotalItems.toLocaleString('es-AR') }}</span>
-            </div>
-            
-            <div v-if="itemsVenta.some(i => i.descuento_monto > 0)" class="carrito-flotante__item carrito-flotante__item--descuento">
-              <span>🏷️ Descuentos por item</span>
-              <span>-${{ itemsVenta.reduce((a,i) => a + i.descuento_monto, 0).toLocaleString('es-AR') }}</span>
-            </div>
-
-            <div v-if="descuentoGeneralMonto > 0" class="carrito-flotante__item carrito-flotante__item--descuento">
-              <span>💰 Descuento general</span>
-              <span>-${{ descuentoGeneralMonto.toLocaleString('es-AR') }}</span>
-            </div>
-            
-            <div class="carrito-flotante__total">
-              <strong>💳 Total:</strong>
-              <strong class="carrito-flotante__total-value">${{ totalVenta.toLocaleString('es-AR') }}</strong>
-            </div>
-          </div>-->
-
-<!-- DESCUENTO GENERAL -->
 <div class="descuento-general">
             <span class="descuento-general__label">💰 Descuento general</span>
             <div class="descuento-general__controles">
@@ -328,6 +304,18 @@
                 <span v-if="pedido.notas">📝 {{ pedido.notas }}</span>
               </div>
               <div class="detalle-acciones">
+                <!-- Cambiar método de pago -->
+                <select
+                  :value="pedido.metodo_pago"
+                  class="metodo-select"
+                  @change="cambiarMetodoPago(pedido, $event.target.value)"
+                >
+                  <option value="efectivo">💵 Efectivo</option>
+                  <option value="transferencia">🏦 Transferencia</option>
+                  <option value="mercado_pago">📱 Mercado Pago</option>
+                  <option value="debito">💳 Débito</option>
+                  <option value="credito">💳 Crédito</option>
+                </select>
                 <!-- Cambiar estado -->
                 <select
                   :value="pedido.estado"
@@ -338,6 +326,7 @@
                   <option value="pendiente">⏳ Pendiente</option>
                   <option value="señado">💰 Señado</option>
                 </select>
+
                 <button class="btn-anular" @click="anular(pedido)">
                   🗑️ Anular
                 </button>
@@ -367,9 +356,10 @@ import {
   fetchPedidos,
   fetchPedidosHoy,
   anularPedido,
-  validarStockVenta
+  validarStockVenta,
+  actualizarEstadoPedido,
+  actualizarMetodoPagoPedido
 } from '../services/productoService.js'
-import { actualizarEstadoPedido } from '../services/productoService.js'
 import { useCarrito } from '../composables/useCarrito'
 import { logger } from '../lib/logger'
 
@@ -586,6 +576,17 @@ const pedidosFiltrados = computed(() => {
 
 function togglePedido(id) {
   pedidoExpandido.value = pedidoExpandido.value === id ? null : id
+}
+
+async function cambiarMetodoPago(pedido, nuevoMetodo) {
+  try {
+    await actualizarMetodoPagoPedido(pedido.id, nuevoMetodo)
+    pedido.metodo_pago = nuevoMetodo
+    await cargarResumenHoy()
+    mostrarToast('✅ Método de pago actualizado')
+  } catch (e) {
+    mostrarToast('❌ Error al actualizar método: ' + e.message)
+  }
 }
 
 async function cambiarEstado(pedido, nuevoEstado) {
@@ -865,6 +866,7 @@ onMounted(async () => {
 .detalle-meta { display: flex; gap: 12px; font-size: 12px; color: var(--mid); flex-wrap: wrap; }
 .detalle-acciones { display: flex; gap: 8px; align-items: center; }
 .estado-select { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; cursor: pointer; }
+.metodo-select { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; cursor: pointer; }
 .btn-anular { padding: 5px 10px; background: none; border: 1.5px solid #EEE; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: inherit; color: var(--mid); transition: all var(--trans); }
 .btn-anular:hover { border-color: var(--rose); color: var(--rose); }
 

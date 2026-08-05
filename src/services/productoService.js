@@ -675,3 +675,17 @@ export const validarStockVenta = async (items) => {
     }
   }
 }
+/**
+ * Actualiza el método de pago de un pedido existente
+ * @param {number} pedidoId - ID del pedido
+ * @param {string} nuevoMetodo - Nuevo método (efectivo, transferencia, etc)
+ */
+export const actualizarMetodoPagoPedido = async (pedidoId, nuevoMetodo) => {
+  const { error } = await supabase
+    .from('pedidos')
+    .update({ metodo_pago: nuevoMetodo })
+    .eq('id', pedidoId)
+
+  if (error) throw error
+  return { success: true }
+}

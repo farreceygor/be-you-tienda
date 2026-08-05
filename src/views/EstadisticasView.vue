@@ -235,7 +235,7 @@ const metricas = computed(() => {
   const mesAnterior = mesActual === 0 ? 11 : mesActual - 1
   const añoAnterior = mesActual === 0 ? añoActual - 1 : añoActual
 
-  const deMesActual   = pedidos.value.filter(p => { const f = new Date(p.created_at); return f.getMonth() === mesActual && f.getFullYear() === añoActual })
+  const deMesActual   = pedidos.value.filter(p => { const f = new Date(p.created_at); return f.getMonth() === mesActual && f.getFullYear() === añoActual && p.estado === 'pagado'})
   const deMesAnterior = pedidos.value.filter(p => { const f = new Date(p.created_at); return f.getMonth() === mesAnterior && f.getFullYear() === añoAnterior })
 
   const totalMesActual   = deMesActual.reduce((acc, p) => acc + Number(p.total), 0)
@@ -266,7 +266,7 @@ const metricasMetodos = computed(() => {
   // Filtrar solo pedidos de este mes
   const deMesActual = pedidos.value.filter(p => {
     const f = new Date(p.created_at)
-    return f.getMonth() === mesActual && f.getFullYear() === añoActual
+    return f.getMonth() === mesActual && f.getFullYear() === añoActual && p.estado === 'pagado'
   })
 
   // Agrupar por método de pago
@@ -339,7 +339,7 @@ const ultimos7dias = computed(() => {
   for (let i = 6; i >= 0; i--) {
     const fecha = new Date(); fecha.setDate(fecha.getDate() - i); fecha.setHours(0,0,0,0)
     const siguiente = new Date(fecha); siguiente.setDate(siguiente.getDate() + 1)
-    const total = pedidos.value.filter(p => { const f = new Date(p.created_at); return f >= fecha && f < siguiente }).reduce((acc, p) => acc + Number(p.total), 0)
+    const total = pedidos.value.filter(p => { const f = new Date(p.created_at); return f >= fecha && f < siguiente && p.estado === 'pagado'}).reduce((acc, p) => acc + Number(p.total), 0)
     dias.push({ fecha: fecha.toLocaleDateString(), diaNombre: nombres[fecha.getDay()], total: Math.round(total) })
   }
   const maxTotal = Math.max(...dias.map(d => d.total), 1)

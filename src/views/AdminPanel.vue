@@ -802,8 +802,6 @@ async function inicializarDatos() {
 }
 
 onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  usuario.value = session?.user || null   // ✅ escribís en el ref real
   if (usuario.value) await inicializarDatos()
 })
 </script>
