@@ -543,7 +543,7 @@ async function confirmarVenta() {
     datosPedido.notas = ''
 
     await cargarResumenHoy()
-    todosLosProductos.value = await fetchProductos()
+    todosLosProductos.value = await fetchProductosAdmin()
     mostrarToast('✅ Venta registrada correctamente')
     
     // Pausa visual
