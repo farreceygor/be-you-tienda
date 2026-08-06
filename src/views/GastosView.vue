@@ -64,6 +64,15 @@
             <input v-model.number="datosGasto.costo_envio" type="number" min="0" placeholder="0" />
           </div>
           <div class="form-group">
+  <label>Método de pago</label>
+  <select v-model="datosGasto.metodo_pago" class="form-group input">
+    <option value="efectivo">💵 Efectivo</option>
+    <option value="transferencia">🏦 Transferencia</option>
+    <option value="tarjeta">💳 Tarjeta</option>
+    <option value="otro">❓ Otro</option>
+  </select>
+</div>
+          <div class="form-group">
             <label>Notas</label>
             <input v-model="datosGasto.notas" type="text" placeholder="Observaciones..." />
           </div>
@@ -216,6 +225,7 @@
               <div class="detalle-meta">
                 <span v-if="gasto.notas">📝 {{ gasto.notas }}</span>
                 <span v-if="gasto.costo_envio > 0">🚚 Envío: ${{ Number(gasto.costo_envio).toLocaleString('es-AR') }}</span>
+                <span v-if="gasto.metodo_pago">💳 {{ formatMetodo(gasto.metodo_pago) }}</span>
               </div>
               <button class="btn-anular" @click="anularGasto(gasto)">🗑️ Eliminar</button>
             </div>
@@ -293,6 +303,7 @@ const datosGasto = reactive({
   fecha:       new Date().toISOString().split('T')[0],
   proveedor:   '',
   costo_envio: 0,
+  metodo_pago: 'efectivo',
   notas:       ''
 })
 
@@ -304,6 +315,7 @@ async function confirmarGasto() {
       fecha:       datosGasto.fecha,
       proveedor:   datosGasto.proveedor   || null,
       costo_envio: Number(datosGasto.costo_envio) || 0,
+      metodo_pago: datosGasto.metodo_pago,
       notas:       datosGasto.notas       || null,
       total:       totalGasto.value
     }
@@ -386,6 +398,15 @@ function formatFecha(fecha) {
   return new Date(fecha + 'T00:00:00').toLocaleDateString('es-AR', {
     day: '2-digit', month: '2-digit', year: 'numeric'
   })
+}
+function formatMetodo(metodo) {
+  const map = {
+    efectivo: 'Efectivo',
+    transferencia: 'Transferencia',
+    tarjeta: 'Tarjeta',
+    otro: 'Otro'
+  }
+  return map[metodo] || metodo
 }
 
 const toast = reactive({ show: false, msg: '' })
