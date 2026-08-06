@@ -44,8 +44,14 @@
       </div>
     </div>
 
-    <!-- ═══ NUEVO GASTO ═══ -->
+    <!-- ═══ NUEVO / EDITAR GASTO ═══ -->
     <div v-if="vistaActual === 'nuevo'" class="panel">
+
+      <!-- Banner de edición -->
+      <div v-if="gastoEditandoId" class="edit-banner">
+        <span>✏️ Editando gasto #{{ gastoEditandoId }}</span>
+        <button class="btn-cancelar-edicion" @click="cancelarEdicionGasto">Cancelar edición</button>
+      </div>
 
       <!-- Datos generales -->
       <div class="panel__section">
@@ -64,14 +70,14 @@
             <input v-model.number="datosGasto.costo_envio" type="number" min="0" placeholder="0" />
           </div>
           <div class="form-group">
-  <label>Método de pago</label>
-  <select v-model="datosGasto.metodo_pago" class="form-group input">
-    <option value="efectivo">💵 Efectivo</option>
-    <option value="transferencia">🏦 Transferencia</option>
-    <option value="tarjeta">💳 Tarjeta</option>
-    <option value="otro">❓ Otro</option>
-  </select>
-</div>
+            <label>Método de pago</label>
+            <select v-model="datosGasto.metodo_pago">
+              <option value="efectivo">💵 Efectivo</option>
+              <option value="transferencia">🏦 Transferencia</option>
+              <option value="tarjeta">💳 Tarjeta</option>
+              <option value="otro">❓ Otro</option>
+            </select>
+          </div>
           <div class="form-group">
             <label>Notas</label>
             <input v-model="datosGasto.notas" type="text" placeholder="Observaciones..." />
@@ -148,11 +154,42 @@
             <button class="gasto-item__remove" @click="quitarItemGasto(idx)">✕</button>
           </div>
 
+          <!-- Descuento del proveedor -->
+          <div class="descuento-proveedor">
+            <span class="descuento-proveedor__label">🏷️ Descuento del proveedor</span>
+            <div class="descuento-proveedor__controles">
+              <select
+                v-model="datosGasto.descuento_tipo"
+                class="item-descuento__select"
+                @change="onDescuentoGastoChange"
+              >
+                <option :value="null">Sin descuento</option>
+                <option value="porcentaje">% Porcentaje</option>
+                <option value="monto">$ Monto fijo</option>
+              </select>
+              <input
+                v-if="datosGasto.descuento_tipo"
+                v-model.number="datosGasto.descuento_valor"
+                type="number"
+                min="0"
+                class="item-descuento__input"
+                :placeholder="datosGasto.descuento_tipo === 'porcentaje' ? '10' : '500'"
+              />
+              <span v-if="descuentoGastoMonto > 0" class="item-descuento__badge">
+                -${{ descuentoGastoMonto.toLocaleString('es-AR') }}
+              </span>
+            </div>
+          </div>
+
           <!-- Total -->
           <div class="gasto-total">
-            <div class="gasto-total__fila" v-if="datosGasto.costo_envio > 0">
+            <div class="gasto-total__fila" v-if="datosGasto.costo_envio > 0 || descuentoGastoMonto > 0">
               <span>Subtotal ítems</span>
               <span>${{ subtotalProductos.toLocaleString('es-AR') }}</span>
+            </div>
+            <div class="gasto-total__fila gasto-total__fila--descuento" v-if="descuentoGastoMonto > 0">
+              <span>🏷️ Descuento proveedor</span>
+              <span>-${{ descuentoGastoMonto.toLocaleString('es-AR') }}</span>
             </div>
             <div class="gasto-total__fila" v-if="datosGasto.costo_envio > 0">
               <span>Costo de envío</span>
@@ -169,7 +206,7 @@
       <!-- Botón de confirmar -->
       <div class="panel__section" v-if="itemsGasto.length > 0">
         <button class="btn-confirmar" :disabled="cargando" @click="confirmarGasto">
-          {{ cargando ? 'Guardando...' : 'Registrar Gasto' }}
+          {{ cargando ? 'Guardando...' : (gastoEditandoId ? 'Guardar cambios' : 'Registrar Gasto') }}
         </button>
       </div>
 
@@ -177,6 +214,23 @@
 
     <!-- ═══ HISTORIAL ═══ -->
     <div v-if="vistaActual === 'historial'" class="panel">
+
+      <!-- Filtros -->
+      <div class="historial-filtros">
+        <input
+          v-model="busquedaHistorial"
+          type="text"
+          class="filtro-input"
+          placeholder="Buscar por proveedor..."
+        />
+        <select v-model="filtroMetodoGasto" class="filtro-select">
+          <option value="">Todos los métodos</option>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
 
       <div v-if="cargandoHistorial" class="estado-carga">
         <div class="spinner"></div>
@@ -188,9 +242,14 @@
         <p>No hay gastos registrados todavía</p>
       </div>
 
+      <div v-else-if="gastosFiltrados.length === 0" class="gasto-empty" style="padding: 40px;">
+        <span>🔍</span>
+        <p>Ningún gasto coincide con el filtro</p>
+      </div>
+
       <div v-else class="historial">
         <div
-          v-for="gasto in gastos"
+          v-for="gasto in gastosFiltrados"
           :key="gasto.id"
           class="historial-item"
           :class="{ 'historial-item--expandido': gastoExpandido === gasto.id }"
@@ -221,13 +280,19 @@
                 <span class="detalle-item__sub">${{ Number(item.subtotal).toLocaleString('es-AR') }}</span>
               </div>
             </div>
+            <div v-if="gasto.descuento_monto > 0" class="detalle-descuento">
+              🏷️ Descuento aplicado: -${{ Number(gasto.descuento_monto).toLocaleString('es-AR') }}
+            </div>
             <div class="detalle-footer">
               <div class="detalle-meta">
                 <span v-if="gasto.notas">📝 {{ gasto.notas }}</span>
                 <span v-if="gasto.costo_envio > 0">🚚 Envío: ${{ Number(gasto.costo_envio).toLocaleString('es-AR') }}</span>
                 <span v-if="gasto.metodo_pago">💳 {{ formatMetodo(gasto.metodo_pago) }}</span>
               </div>
-              <button class="btn-anular" @click="anularGasto(gasto)">🗑️ Eliminar</button>
+              <div class="detalle-acciones">
+                <button class="btn-editar" @click="prepararEdicionGasto(gasto)">✏️ Editar</button>
+                <button class="btn-anular" @click="anularGasto(gasto)">🗑️ Eliminar</button>
+              </div>
             </div>
           </div>
         </div>
@@ -243,7 +308,7 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
-import { crearGasto, fetchGastos, eliminarGasto } from '../services/productoService'
+import { crearGasto, fetchGastos, eliminarGasto, actualizarGasto } from '../services/productoService'
 
 // ─── ESTADO ──────────────────────────────────────────────────────
 const vistaActual       = ref('nuevo')
@@ -265,7 +330,6 @@ function agregarItemManual() {
     precio_costo: itemNuevo.precio_costo || 0,
     subtotal:     (itemNuevo.cantidad || 1) * (itemNuevo.precio_costo || 0)
   })
-  // Limpiar para el próximo item
   itemNuevo.nombre       = ''
   itemNuevo.cantidad     = 1
   itemNuevo.precio_costo = 0
@@ -294,43 +358,103 @@ const subtotalProductos = computed(() =>
   itemsGasto.value.reduce((acc, i) => acc + i.subtotal, 0)
 )
 
+// ─── DESCUENTO DEL PROVEEDOR ─────────────────────────────────────
+const descuentoGastoMonto = computed(() => {
+  if (!datosGasto.descuento_tipo || !datosGasto.descuento_valor || datosGasto.descuento_valor <= 0) {
+    return 0
+  }
+  if (datosGasto.descuento_tipo === 'porcentaje') {
+    return Math.round(subtotalProductos.value * (datosGasto.descuento_valor / 100))
+  }
+  return Math.min(datosGasto.descuento_valor, subtotalProductos.value)
+})
+
+function onDescuentoGastoChange() {
+  if (!datosGasto.descuento_tipo) datosGasto.descuento_valor = 0
+}
+
 const totalGasto = computed(() =>
-  subtotalProductos.value + Number(datosGasto.costo_envio || 0)
+  Math.max(0, subtotalProductos.value - descuentoGastoMonto.value) + Number(datosGasto.costo_envio || 0)
 )
 
 // ─── DATOS DEL GASTO ─────────────────────────────────────────────
 const datosGasto = reactive({
-  fecha:       new Date().toISOString().split('T')[0],
-  proveedor:   '',
-  costo_envio: 0,
-  metodo_pago: 'efectivo',
-  notas:       ''
+  fecha:            new Date().toISOString().split('T')[0],
+  proveedor:        '',
+  costo_envio:      0,
+  metodo_pago:      'efectivo',
+  notas:            '',
+  descuento_tipo:   null,
+  descuento_valor:  0
 })
+
+// ─── EDICIÓN ─────────────────────────────────────────────────────
+const gastoEditandoId = ref(null)
+
+function prepararEdicionGasto(gasto) {
+  gastoEditandoId.value = gasto.id
+
+  datosGasto.fecha           = gasto.fecha
+  datosGasto.proveedor       = gasto.proveedor || ''
+  datosGasto.costo_envio     = gasto.costo_envio || 0
+  datosGasto.metodo_pago     = gasto.metodo_pago || 'efectivo'
+  datosGasto.notas           = gasto.notas || ''
+  datosGasto.descuento_tipo  = gasto.descuento_tipo || null
+  datosGasto.descuento_valor = gasto.descuento_valor || 0
+
+  itemsGasto.value = (gasto.gasto_items || []).map(item => ({
+    producto_id:  item.producto_id || null,
+    nombre:       item.nombre,
+    cantidad:     item.cantidad,
+    precio_costo: item.precio_costo,
+    subtotal:     item.subtotal
+  }))
+
+  vistaActual.value = 'nuevo'
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function cancelarEdicionGasto() {
+  gastoEditandoId.value  = null
+  itemsGasto.value       = []
+  datosGasto.fecha           = new Date().toISOString().split('T')[0]
+  datosGasto.proveedor       = ''
+  datosGasto.costo_envio     = 0
+  datosGasto.metodo_pago     = 'efectivo'
+  datosGasto.notas           = ''
+  datosGasto.descuento_tipo  = null
+  datosGasto.descuento_valor = 0
+}
 
 async function confirmarGasto() {
   if (itemsGasto.value.length === 0) return
   cargando.value = true
   try {
     const cabecera = {
-      fecha:       datosGasto.fecha,
-      proveedor:   datosGasto.proveedor   || null,
-      costo_envio: Number(datosGasto.costo_envio) || 0,
-      metodo_pago: datosGasto.metodo_pago,
-      notas:       datosGasto.notas       || null,
-      total:       totalGasto.value
+      fecha:            datosGasto.fecha,
+      proveedor:        datosGasto.proveedor   || null,
+      costo_envio:      Number(datosGasto.costo_envio) || 0,
+      metodo_pago:      datosGasto.metodo_pago,
+      notas:            datosGasto.notas       || null,
+      descuento_tipo:   datosGasto.descuento_tipo || null,
+      descuento_valor:  datosGasto.descuento_valor || 0,
+      descuento_monto:  descuentoGastoMonto.value,
+      total:             totalGasto.value
     }
 
-    await crearGasto(cabecera, itemsGasto.value)
-
-    // Limpiar formulario
-    itemsGasto.value      = []
-    datosGasto.proveedor   = ''
-    datosGasto.costo_envio = 0
-    datosGasto.notas       = ''
-    datosGasto.fecha       = new Date().toISOString().split('T')[0]
+    if (gastoEditandoId.value) {
+      await actualizarGasto(gastoEditandoId.value, cabecera, itemsGasto.value)
+      mostrarToast('✅ Gasto actualizado correctamente')
+      cancelarEdicionGasto()
+      await cargarHistorial()
+      vistaActual.value = 'historial'
+    } else {
+      await crearGasto(cabecera, itemsGasto.value)
+      mostrarToast('✅ Gasto registrado correctamente')
+      cancelarEdicionGasto()
+    }
 
     await cargarResumen()
-    mostrarToast('✅ Gasto registrado correctamente')
   } catch (e) {
     mostrarToast('❌ Error al guardar: ' + e.message)
   } finally {
@@ -339,8 +463,19 @@ async function confirmarGasto() {
 }
 
 // ─── HISTORIAL ───────────────────────────────────────────────────
-const gastos        = ref([])
-const gastoExpandido = ref(null)
+const gastos          = ref([])
+const gastoExpandido  = ref(null)
+const busquedaHistorial = ref('')
+const filtroMetodoGasto = ref('')
+
+const gastosFiltrados = computed(() => {
+  return gastos.value.filter(g => {
+    const okProveedor = !busquedaHistorial.value.trim() ||
+      (g.proveedor || '').toLowerCase().includes(busquedaHistorial.value.toLowerCase())
+    const okMetodo = !filtroMetodoGasto.value || g.metodo_pago === filtroMetodoGasto.value
+    return okProveedor && okMetodo
+  })
+})
 
 async function cargarHistorial() {
   cargandoHistorial.value = true
@@ -488,12 +623,52 @@ onMounted(async () => {
 .panel__section:last-child { border-bottom: none; }
 .panel__title { font-size: 12px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 
+/* ─── BANNER DE EDICIÓN ─── */
+.edit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #FFF8E1;
+  border-bottom: 1px solid #FFE0A3;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8A6100;
+  flex-wrap: wrap;
+}
+.btn-cancelar-edicion {
+  padding: 5px 10px;
+  background: none;
+  border: 1.5px solid #E0B040;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: #8A6100;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--trans);
+}
+.btn-cancelar-edicion:hover { background: #FFE0A3; }
+
 .form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 540px) { .form-grid { grid-template-columns: 1fr 1fr; } }
 .form-group { display: flex; flex-direction: column; gap: 4px; }
 .form-group label { font-size: 10px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; }
-.form-group input { padding: 8px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; color: var(--charcoal); transition: border var(--trans); }
-.form-group input:focus { outline: none; border-color: var(--rose); }
+.form-group input,
+.form-group select {
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--charcoal);
+  background: var(--white);
+  transition: border var(--trans);
+  cursor: pointer;
+}
+.form-group input { cursor: text; }
+.form-group input:focus,
+.form-group select:focus { outline: none; border-color: var(--rose); }
 
 .item-nuevo { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .item-nuevo__nombre { flex: 1; min-width: 160px; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; color: var(--charcoal); transition: border var(--trans); }
@@ -511,8 +686,6 @@ onMounted(async () => {
 .gasto-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; position: relative; }
 .gasto-item__info { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .gasto-item__nombre { font-size: 13px; font-weight: 500; }
-.gasto-item__tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: #E8F5E8; color: #2E7D32; font-weight: 500; }
-.gasto-item__tag--nuevo { background: #F3E8FF; color: #6B21A8; }
 .gasto-item__controls { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .gasto-item__field { display: flex; flex-direction: column; gap: 4px; }
 .gasto-item__field label { font-size: 10px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -529,14 +702,41 @@ onMounted(async () => {
 .qty-btn:hover { background: var(--rose); color: white; }
 .qty-num { font-size: 13px; font-weight: 600; min-width: 18px; text-align: center; }
 
+/* ─── DESCUENTO PROVEEDOR ─── */
+.descuento-proveedor {
+  margin-top: 8px;
+  padding: 12px;
+  background: #FFFAF9;
+  border: 1px dashed var(--rose);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.descuento-proveedor__label { font-size: 13px; font-weight: 600; color: var(--charcoal); }
+.descuento-proveedor__controles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.item-descuento__select { padding: 6px 8px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; color: var(--charcoal); background: var(--white); cursor: pointer; }
+.item-descuento__input { width: 80px; padding: 6px 8px; border: 1.5px solid var(--rose); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; color: var(--charcoal); }
+.item-descuento__input:focus { outline: none; }
+.item-descuento__badge { font-size: 12px; font-weight: 700; color: #2E7D32; background: #E8F5E8; padding: 3px 8px; border-radius: 10px; }
+
 .gasto-total { border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .gasto-total__fila { display: flex; justify-content: space-between; font-size: 13px; color: var(--mid); }
+.gasto-total__fila--descuento { color: #2E7D32; font-weight: 600; }
 .gasto-total__fila--total { display: flex; justify-content: space-between; font-size: 14px; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
 .gasto-total__fila--total strong { font-size: 20px; font-weight: 700; color: #C62828; }
 
 .btn-confirmar { width: 100%; padding: 12px; background: var(--rose); color: white; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background var(--trans); }
 .btn-confirmar:hover:not(:disabled) { background: var(--rose-dark); }
 .btn-confirmar:disabled { background: #ccc; cursor: not-allowed; }
+
+/* ─── FILTROS HISTORIAL ─── */
+.historial-filtros { display: flex; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.filtro-input { flex: 2; min-width: 160px; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; color: var(--charcoal); background: var(--white); }
+.filtro-input:focus { outline: none; border-color: var(--rose); }
+.filtro-select { flex: 1; min-width: 130px; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; color: var(--charcoal); background: var(--white); cursor: pointer; }
 
 .historial { padding: 10px 14px; }
 @media (min-width: 640px) { .historial { padding: 12px 20px; } }
@@ -561,8 +761,12 @@ onMounted(async () => {
 .detalle-item__qty    { color: var(--mid); white-space: nowrap; }
 .detalle-item__precio { color: var(--mid); white-space: nowrap; }
 .detalle-item__sub    { font-weight: 700; color: #C62828; white-space: nowrap; }
+.detalle-descuento { padding: 0 14px 10px; font-size: 12px; font-weight: 600; color: #2E7D32; }
 .detalle-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
 .detalle-meta { display: flex; gap: 12px; font-size: 12px; color: var(--mid); flex-wrap: wrap; }
+.detalle-acciones { display: flex; gap: 8px; }
+.btn-editar { padding: 5px 10px; background: none; border: 1.5px solid #BBDEFB; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: inherit; color: #1565C0; transition: all var(--trans); }
+.btn-editar:hover { background: #E3F2FD; border-color: #1565C0; }
 .btn-anular { padding: 5px 10px; background: none; border: 1.5px solid #EEE; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: inherit; color: var(--mid); transition: all var(--trans); }
 .btn-anular:hover { border-color: var(--rose); color: var(--rose); }
 

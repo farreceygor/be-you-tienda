@@ -616,6 +616,42 @@ export const eliminarGasto = async (id) => {
   if (error) throw error
   return { success: true }
 }
+// Actualiza un gasto existente: cabecera + reemplazo completo de items
+export const actualizarGasto = async (id, datosGasto, items) => {
+  // Paso 1: actualizar la cabecera
+  const { error: errorGasto } = await supabase
+    .from('gastos')
+    .update(datosGasto)
+    .eq('id', id)
+
+  if (errorGasto) throw errorGasto
+
+  // Paso 2: borrar los items viejos (más simple y seguro que hacer un diff)
+  const { error: errorDelete } = await supabase
+    .from('gasto_items')
+    .delete()
+    .eq('gasto_id', id)
+
+  if (errorDelete) throw errorDelete
+
+  // Paso 3: insertar los items actuales
+  const lineas = items.map(item => ({
+    gasto_id:     id,
+    producto_id:  item.producto_id || null,
+    nombre:       item.nombre,
+    cantidad:     item.cantidad,
+    precio_costo: item.precio_costo,
+    subtotal:     item.subtotal
+  }))
+
+  const { error: errorItems } = await supabase
+    .from('gasto_items')
+    .insert(lineas)
+
+  if (errorItems) throw errorItems
+
+  return { success: true }
+}
 
 /**
  * Valida que todos los productos en la venta tengan stock disponible
