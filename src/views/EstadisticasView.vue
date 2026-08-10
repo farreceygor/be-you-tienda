@@ -23,17 +23,14 @@
 
     <template v-else>
 
-      <!-- MÉTRICAS CLAVE - ESTE MES (Pagado) -->
+      <!-- ═══════════════════════════════════════════════════════════
+           SECCIÓN: ESTE MES
+           ═══════════════════════════════════════════════════════════ -->
       <div class="metricas-seccion">
-        <h3 class="metricas-seccion__title">📅 Este Mes (Solo Cobrado)</h3>
+        <h2 class="metricas-seccion__title">📅 Este Mes</h2>
+        
+        <!-- Cards superiores: Pedidos y Ticket -->
         <div class="metricas">
-          <div class="metrica-card">
-            <span class="metrica-card__label">Ventas cobradas este mes</span>
-            <span class="metrica-card__value">${{ metricas.mesActual.toLocaleString('es-AR') }}</span>
-            <span class="metrica-card__delta" :class="metricas.deltaMes >= 0 ? 'delta--up' : 'delta--down'">
-              {{ metricas.deltaMes >= 0 ? '↑' : '↓' }} {{ Math.abs(metricas.deltaMes) }}% vs mes anterior
-            </span>
-          </div>
           <div class="metrica-card">
             <span class="metrica-card__label">Pedidos pagos este mes</span>
             <span class="metrica-card__value">{{ metricas.pedidosMes }}</span>
@@ -46,163 +43,150 @@
             <span class="metrica-card__value">${{ metricas.ticketPromedio.toLocaleString('es-AR') }}</span>
             <span class="metrica-card__delta delta--neutral">Basado en {{ metricas.pedidosMes }} pedidos</span>
           </div>
-          <div class="metrica-card">
-            <span class="metrica-card__label">Gastos este mes</span>
-            <span class="metrica-card__value" style="color: #C62828;">
-              ${{ metricas.gastosMes.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">Compras y reposición</span>
+        </div>
+
+        <!-- Ventas Este Mes - Desglosado -->
+        <div class="subseccion">
+          <h3 class="subseccion__title">💰 Ventas Cobradas Este Mes</h3>
+          <div class="metricas">
+            <div class="metrica-card metrica-card--highlight">
+              <span class="metrica-card__label">Ventas totales</span>
+              <span class="metrica-card__value" style="color: #2E7D32;">${{ metricas.mesActual.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta" :class="metricas.deltaMes >= 0 ? 'delta--up' : 'delta--down'">
+                {{ metricas.deltaMes >= 0 ? '↑' : '↓' }} {{ Math.abs(metricas.deltaMes) }}% vs mes anterior
+              </span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">💵 Efectivo</span>
+              <span class="metrica-card__value" style="color: #2E7D32;">${{ metricasMetodos.efectivo.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ metricasMetodos.efectivoQty }} operaciones</span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">🏦 Transferencias</span>
+              <span class="metrica-card__value" style="color: #4A8FA8;">${{ metricasMetodos.transferencia.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ metricasMetodos.transferenciaQty }} operaciones</span>
+            </div>
           </div>
-          <div class="metrica-card" :class="metricas.gananciaNeta >= 0 ? '' : 'metrica-card--danger'">
-            <span class="metrica-card__label">✅ Ganancia neta este mes</span>
+        </div>
+
+        <!-- Gastos Este Mes - Desglosado -->
+        <div class="subseccion">
+          <h3 class="subseccion__title">💸 Gastos Este Mes</h3>
+          <div class="metricas">
+            <div class="metrica-card">
+              <span class="metrica-card__label">Gastos totales</span>
+              <span class="metrica-card__value" style="color: #C62828;">${{ metricas.gastosMes.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">Compras y reposición</span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">💵 Efectivo</span>
+              <span class="metrica-card__value" style="color: #C62828;">${{ gastosMetodosMes.efectivo.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ gastosMetodosMes.efectivoQty }} operaciones</span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">🏦 Transferencias</span>
+              <span class="metrica-card__value" style="color: #C62828;">${{ gastosMetodosMes.transferencia.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ gastosMetodosMes.transferenciaQty }} operaciones</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ganancia Neta Este Mes -->
+        <div class="subseccion">
+          <div class="metrica-card metrica-card--ganancia" :class="metricas.gananciaNeta >= 0 ? '' : 'metrica-card--danger'">
+            <span class="metrica-card__label">✅ Ganancia Neta Este Mes (Real)</span>
             <span
               class="metrica-card__value"
-              :style="{ color: metricas.gananciaNeta >= 0 ? '#2E7D32' : '#C62828' }"
+              :style="{ color: metricas.gananciaNeta >= 0 ? '#2E7D32' : '#C62828', fontSize: '2rem' }"
             >
               ${{ metricas.gananciaNeta.toLocaleString('es-AR') }}
             </span>
-            <span class="metrica-card__delta delta--neutral">Ventas cobradas − Gastos</span>
+            <span class="metrica-card__delta delta--neutral">Ventas cobradas − Gastos realizados</span>
           </div>
         </div>
       </div>
 
-      <!-- MÉTRICAS CLAVE - PENDIENTES -->
+      <!-- ═══════════════════════════════════════════════════════════
+           SECCIÓN: TOTALES GENERAL
+           ═══════════════════════════════════════════════════════════ -->
       <div class="metricas-seccion">
-        <h3 class="metricas-seccion__title">⏳ Pendiente de Cobrar</h3>
-        <div class="metricas">
-          <div class="metrica-card" style="border-left: 4px solid #E65100;">
-            <span class="metrica-card__label">⏳ Pendiente ESTE MES</span>
-            <span class="metrica-card__value" style="color: #E65100;">
-              ${{ totalPendienteMes.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              {{ pedidosPendientesEsMes.length }} pedido(s)
-            </span>
-          </div>
-          <div class="metrica-card" style="border-left: 4px solid #E65100;">
-            <span class="metrica-card__label">⏳ Pendiente histórico (TOTAL)</span>
-            <span class="metrica-card__value" style="color: #E65100;">
-              ${{ totalPendienteHistorico.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              Desde el inicio
-            </span>
-          </div>
-          <div class="metrica-card" style="border-left: 4px solid #C9748A;">
-            <span class="metrica-card__label">💰 Señado histórico (TOTAL)</span>
-            <span class="metrica-card__value" style="color: #C9748A;">
-              ${{ totalSeñadoHistorico.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              Depósitos o reservas
-            </span>
-          </div>
-          <div class="metrica-card" style="border-left: 4px solid #4A8FA8;">
-            <span class="metrica-card__label">💎 Si cobras TODO pendiente...</span>
-            <span class="metrica-card__value" style="color: #4A8FA8;">
-              ${{ gananciaSiCobrasTodo.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              Ganancia potencial total
-            </span>
+        <h2 class="metricas-seccion__title">📈 Totales General (Desde el Inicio)</h2>
+
+        <!-- Total Vendido - Desglosado -->
+        <div class="subseccion">
+          <h3 class="subseccion__title">💰 Total Vendido (Histórico)</h3>
+          <div class="metricas">
+            <div class="metrica-card metrica-card--highlight">
+              <span class="metrica-card__label">Ventas totales histórico</span>
+              <span class="metrica-card__value" style="color: #2E7D32;">${{ metricasHistorico.totalCobradoHistorico.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">Pedidos pagados</span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">💵 Efectivo histórico</span>
+              <span class="metrica-card__value" style="color: #2E7D32;">${{ metricasMetodosHistorico.efectivo.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ metricasMetodosHistorico.efectivoQty }} transacciones</span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">🏦 Transferencias histórico</span>
+              <span class="metrica-card__value" style="color: #4A8FA8;">${{ metricasMetodosHistorico.transferencia.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ metricasMetodosHistorico.transferenciaQty }} transacciones</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- MÉTRICAS CLAVE - MÉTODOS DE PAGO ESTE MES -->
-      <div class="metricas-seccion">
-        <h3 class="metricas-seccion__title">💳 Métodos de Pago - Este Mes</h3>
-        <div class="metricas">
-          <div class="metrica-card">
-            <span class="metrica-card__label">Efectivo este mes</span>
-            <span class="metrica-card__value" style="color: #2E7D32;">
-              ${{ metricasMetodos.efectivo.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              {{ metricasMetodos.efectivoQty }} operaciones
-            </span>
-          </div>
-          <div class="metrica-card">
-            <span class="metrica-card__label">Transferencias este mes</span>
-            <span class="metrica-card__value" style="color: #4A8FA8;">
-              ${{ metricasMetodos.transferencia.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              {{ metricasMetodos.transferenciaQty }} operaciones
-            </span>
-          </div>
-          <div class="metrica-card">
-            <span class="metrica-card__label">Mercado Pago este mes</span>
-            <span class="metrica-card__value" style="color: #7A3350;">
-              ${{ metricasMetodos.mercadoPago.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              {{ metricasMetodos.mercadoPagoQty }} operaciones
-            </span>
-          </div>
-          <div class="metrica-card">
-            <span class="metrica-card__label">Débito este mes</span>
-            <span class="metrica-card__value" style="color: #4A8FA8;">
-              ${{ metricasMetodos.debito.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              {{ metricasMetodos.debitoQty }} operaciones
-            </span>
+        <!-- Gastos Históricos - Desglosado -->
+        <div class="subseccion">
+          <h3 class="subseccion__title">💸 Gastos Históricos</h3>
+          <div class="metricas">
+            <div class="metrica-card">
+              <span class="metrica-card__label">Gastos totales histórico</span>
+              <span class="metrica-card__value" style="color: #C62828;">${{ totalGastosHistorico.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">Desde el inicio</span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">💵 Efectivo histórico</span>
+              <span class="metrica-card__value" style="color: #C62828;">${{ gastosMetodosHistorico.efectivo.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ gastosMetodosHistorico.efectivoQty }} transacciones</span>
+            </div>
+            <div class="metrica-card">
+              <span class="metrica-card__label">🏦 Transferencias histórico</span>
+              <span class="metrica-card__value" style="color: #C62828;">${{ gastosMetodosHistorico.transferencia.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">{{ gastosMetodosHistorico.transferenciaQty }} transacciones</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- MÉTRICAS CLAVE - HISTÓRICO TOTAL -->
-      <div class="metricas-seccion">
-        <h3 class="metricas-seccion__title">📊 Histórico Total (Desde el Inicio)</h3>
-        <div class="metricas">
-          <div class="metrica-card metrica-card--dark">
-            <span class="metrica-card__label">Total cobrado (histórico)</span>
-            <span class="metrica-card__value">
-              ${{ metricasHistorico.totalCobradoHistorico.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">Pedidos pagados</span>
+        <!-- Pendientes y Ganancia General -->
+        <div class="subseccion">
+          <h3 class="subseccion__title">⏳ Situación de Pagos</h3>
+          <div class="metricas">
+            <div class="metrica-card" style="border-left: 4px solid #E65100;">
+              <span class="metrica-card__label">Pendiente de Cobrar</span>
+              <span class="metrica-card__value" style="color: #E65100;">${{ totalPendienteHistorico.toLocaleString('es-AR') }}</span>
+              <span class="metrica-card__delta delta--neutral">No cobrado aún</span>
+            </div>
           </div>
-          <div class="metrica-card">
-            <span class="metrica-card__label">Efectivo (Histórico total)</span>
-            <span class="metrica-card__value" style="color: #2E7D32;">
-              ${{ metricasMetodosHistorico.efectivo.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              {{ metricasMetodosHistorico.efectivoQty }} transacciones
-            </span>
-          </div>
-          <div class="metrica-card">
-            <span class="metrica-card__label">Transferencias (Histórico total)</span>
-            <span class="metrica-card__value" style="color: #4A8FA8;">
-              ${{ metricasMetodosHistorico.transferencia.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">
-              {{ metricasMetodosHistorico.transferenciaQty }} transacciones
-            </span>
-          </div>
-          <div class="metrica-card">
-            <span class="metrica-card__label">Gastos (Histórico total)</span>
-            <span class="metrica-card__value" style="color: #C62828;">
-              ${{ totalGastosHistorico.toLocaleString('es-AR') }}
-            </span>
-            <span class="metrica-card__delta delta--neutral">Desde el inicio</span>
-          </div>
-          <div class="metrica-card metrica-card--dark">
-            <span class="metrica-card__label">💰 Ganancia neta histórica</span>
-            <span class="metrica-card__value">
+        </div>
+
+        <!-- Ganancia Neta Histórica -->
+        <div class="subseccion">
+          <div class="metrica-card metrica-card--ganancia-historic">
+            <span class="metrica-card__label">✅ Ganancia Neta Histórica (Real)</span>
+            <span
+              class="metrica-card__value"
+              :style="{ color: gananciaNetaRealHistorico >= 0 ? '#2E7D32' : '#C62828', fontSize: '2rem' }"
+            >
               ${{ gananciaNetaRealHistorico.toLocaleString('es-AR') }}
             </span>
-            <span class="metrica-card__delta delta--neutral">
-              Lo que cobré − Lo que gasté
-            </span>
+            <span class="metrica-card__delta delta--neutral">Lo que cobré − Lo que gasté (histórico)</span>
           </div>
         </div>
       </div>
 
-      <!-- GRÁFICOS -->
-      <div class="graficos">
-        <!-- Barras: últimos 7 días -->
+      <!-- ═══════════════════════════════════════════════════════════
+           GRÁFICOS (Opcional)
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="graficos" v-if="ultimos7dias.length > 0">
         <div class="grafico-card grafico-card--wide">
           <h3 class="grafico-card__title">Ventas últimos 7 días</h3>
           <div class="bar-chart">
@@ -215,52 +199,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Donut: por método de pago -->
-        <div class="grafico-card">
-          <h3 class="grafico-card__title">Por método de pago</h3>
-          <div class="donut-wrap">
-            <svg viewBox="0 0 120 120" class="donut-svg">
-              <circle v-for="(seg, i) in donutSegmentos" :key="i"
-                cx="60" cy="60" r="48" fill="none"
-                :stroke="seg.color" stroke-width="20"
-                :stroke-dasharray="`${seg.arco} ${301.6 - seg.arco}`"
-                :stroke-dashoffset="-seg.offset"
-                transform="rotate(-90 60 60)"
-              />
-              <text x="60" y="56" text-anchor="middle" class="donut-center-label">Total</text>
-              <text x="60" y="70" text-anchor="middle" class="donut-center-value">${{ (metricas.mesActual / 1000).toFixed(0) }}k</text>
-            </svg>
-            <div class="donut-leyenda">
-              <div v-for="seg in donutSegmentos" :key="seg.label" class="donut-leyenda__item">
-                <span class="donut-leyenda__dot" :style="{ background: seg.color }"></span>
-                <span class="donut-leyenda__label">{{ seg.label }}</span>
-                <span class="donut-leyenda__pct">{{ seg.pct }}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TOP PRODUCTOS -->
-      <div class="seccion-card">
-        <h3 class="seccion-card__title">Productos más vendidos</h3>
-        <div v-if="topProductos.length === 0" class="estado-vacio">Sin datos suficientes todavía</div>
-        <div v-else class="top-productos">
-          <div v-for="(prod, idx) in topProductos" :key="prod.nombre" class="top-prod">
-            <span class="top-prod__rank">#{{ idx + 1 }}</span>
-            <div class="top-prod__info">
-              <span class="top-prod__nombre">{{ prod.nombre }}</span>
-              <div class="top-prod__barra-wrap">
-                <div class="top-prod__barra" :style="{ width: prod.porcentaje + '%' }"></div>
-              </div>
-            </div>
-            <div class="top-prod__nums">
-              <span class="top-prod__unidades">{{ prod.unidades }} uds</span>
-              <span class="top-prod__total">${{ prod.total.toLocaleString('es-AR') }}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- ÚLTIMAS VENTAS -->
@@ -270,7 +208,7 @@
         <table v-else class="ventas-table">
           <thead>
             <tr>
-              <th>#</th><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Método</th><th>Total</th><th>Estado</th>
+              <th>#</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -278,8 +216,6 @@
               <td class="td-id">{{ venta.id }}</td>
               <td class="td-fecha">{{ formatFecha(venta.created_at) }}</td>
               <td>{{ venta.cliente || '—' }}</td>
-              <td class="td-productos">{{ venta.pedido_items.map(i => i.nombre).join(', ') }}</td>
-              <td>{{ formatMetodo(venta.metodo_pago) }}</td>
               <td class="td-total">${{ Number(venta.total).toLocaleString('es-AR') }}</td>
               <td><span class="estado-badge" :class="`estado-badge--${venta.estado}`">{{ venta.estado }}</span></td>
             </tr>
@@ -320,8 +256,9 @@ async function cargarDatos() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// CÁLCULO DE MÉTRICAS - ESTE MES (SOLO PAGADO)
+// SECCIÓN: ESTE MES (SOLO PAGADO)
 // ═══════════════════════════════════════════════════════════
+
 const metricas = computed(() => {
   const ahora       = new Date()
   const mesActual   = ahora.getMonth()
@@ -329,7 +266,7 @@ const metricas = computed(() => {
   const mesAnterior = mesActual === 0 ? 11 : mesActual - 1
   const añoAnterior = mesActual === 0 ? añoActual - 1 : añoActual
 
-  // ESTE MES - Solo pagados (lo que realmente cobraste)
+  // ESTE MES - Solo pagados
   const deMesActualPagados = pedidos.value.filter(p => {
     const f = new Date(p.created_at)
     return f.getMonth() === mesActual && 
@@ -337,7 +274,7 @@ const metricas = computed(() => {
            p.estado === 'pagado'
   })
 
-  // MES ANTERIOR - Solo pagados (para comparación justa)
+  // MES ANTERIOR - Solo pagados
   const deMesAnteriorPagados = pedidos.value.filter(p => {
     const f = new Date(p.created_at)
     return f.getMonth() === mesAnterior && 
@@ -360,7 +297,6 @@ const metricas = computed(() => {
     })
     .reduce((acc, g) => acc + Number(g.total), 0)
 
-  // ✅ Ganancia neta = Solo de lo cobrado en este mes
   const gananciaNeta = totalMesActual - gastosMes
 
   return {
@@ -375,91 +311,24 @@ const metricas = computed(() => {
 })
 
 // ═══════════════════════════════════════════════════════════
-// MÉTRICAS DE PENDIENTES DE PAGO
-// ═══════════════════════════════════════════════════════════
-
-// Pedidos pendientes este mes
-const pedidosPendientesEsMes = computed(() => {
-  const ahora       = new Date()
-  const mesActual   = ahora.getMonth()
-  const añoActual   = ahora.getFullYear()
-
-  return pedidos.value.filter(p => {
-    const f = new Date(p.created_at)
-    return f.getMonth() === mesActual && 
-           f.getFullYear() === añoActual && 
-           p.estado === 'pendiente'
-  })
-})
-
-// Total de dinero pendiente este mes
-const totalPendienteMes = computed(() => {
-  return pedidosPendientesEsMes.value.reduce(
-    (acc, p) => acc + Number(p.total), 
-    0
-  )
-})
-
-// ✅ HISTÓRICO: Todo el dinero pendiente desde el inicio
-const totalPendienteHistorico = computed(() => {
-  return pedidos.value
-    .filter(p => p.estado === 'pendiente')
-    .reduce((acc, p) => acc + Number(p.total), 0)
-})
-
-// ✅ HISTÓRICO: Todo el dinero señado desde el inicio
-const totalSeñadoHistorico = computed(() => {
-  return pedidos.value
-    .filter(p => p.estado === 'señado')
-    .reduce((acc, p) => acc + Number(p.total), 0)
-})
-
-// ✅ Total de gastos históricos
-const totalGastosHistorico = computed(() => {
-  return gastos.value.reduce((acc, g) => acc + Number(g.total), 0)
-})
-
-// ✅ La verdadera ganancia neta histórica (solo lo que has cobrado menos gastos)
-const gananciaNetaRealHistorico = computed(() => {
-  const totalCobradoHistorico = pedidos.value
-    .filter(p => p.estado === 'pagado')
-    .reduce((acc, p) => acc + Number(p.total), 0)
-  
-  return totalCobradoHistorico - totalGastosHistorico.value
-})
-
-// ✅ BONUS: Ganancia si cobras TODOS los pendientes
-const gananciaSiCobrasTodo = computed(() => {
-  const todoCobraría = pedidos.value.reduce(
-    (acc, p) => acc + Number(p.total), 
-    0
-  )
-  return todoCobraría - totalGastosHistorico.value
-})
-
-// ═══════════════════════════════════════════════════════════
 // MÉTODOS DE PAGO - ESTE MES (SOLO PAGADO)
 // ═══════════════════════════════════════════════════════════
+
 const metricasMetodos = computed(() => {
   const ahora       = new Date()
   const mesActual   = ahora.getMonth()
   const añoActual   = ahora.getFullYear()
 
-  // Filtrar solo pedidos de este mes Y pagados
   const deMesActual = pedidos.value.filter(p => {
     const f = new Date(p.created_at)
     return f.getMonth() === mesActual && 
            f.getFullYear() === añoActual && 
-           p.estado === 'pagado'  // ← ✅ Solo pagados
+           p.estado === 'pagado'
   })
 
-  // Agrupar por método de pago
   const porMetodo = {
     efectivo: { total: 0, qty: 0 },
-    transferencia: { total: 0, qty: 0 },
-    mercado_pago: { total: 0, qty: 0 },
-    debito: { total: 0, qty: 0 },
-    credito: { total: 0, qty: 0 }
+    transferencia: { total: 0, qty: 0 }
   }
 
   deMesActual.forEach(pedido => {
@@ -474,31 +343,79 @@ const metricasMetodos = computed(() => {
     efectivo: Math.round(porMetodo.efectivo.total),
     efectivoQty: porMetodo.efectivo.qty,
     transferencia: Math.round(porMetodo.transferencia.total),
-    transferenciaQty: porMetodo.transferencia.qty,
-    mercadoPago: Math.round(porMetodo.mercado_pago.total),
-    mercadoPagoQty: porMetodo.mercado_pago.qty,
-    debito: Math.round(porMetodo.debito.total),
-    debitoQty: porMetodo.debito.qty,
-    credito: Math.round(porMetodo.credito.total),
-    creditoQty: porMetodo.credito.qty
+    transferenciaQty: porMetodo.transferencia.qty
   }
 })
 
 // ═══════════════════════════════════════════════════════════
-// MÉTODOS DE PAGO - HISTÓRICO (SOLO PAGADO) ✅ FIXED
+// GASTOS - ESTE MES (POR MÉTODO)
 // ═══════════════════════════════════════════════════════════
+
+const gastosMetodosMes = computed(() => {
+  const ahora       = new Date()
+  const mesActual   = ahora.getMonth()
+  const añoActual   = ahora.getFullYear()
+
+  const deMes = gastos.value.filter(g => {
+    const f = new Date(g.fecha)
+    return f.getMonth() === mesActual && f.getFullYear() === añoActual
+  })
+
+  const porMetodo = {
+    efectivo: { total: 0, qty: 0 },
+    transferencia: { total: 0, qty: 0 }
+  }
+
+  deMes.forEach(gasto => {
+    const metodo = gasto.metodo_pago || 'efectivo'
+    if (porMetodo[metodo]) {
+      porMetodo[metodo].total += Number(gasto.total)
+      porMetodo[metodo].qty++
+    }
+  })
+
+  return {
+    efectivo: Math.round(porMetodo.efectivo.total),
+    efectivoQty: porMetodo.efectivo.qty,
+    transferencia: Math.round(porMetodo.transferencia.total),
+    transferenciaQty: porMetodo.transferencia.qty
+  }
+})
+
+// ═══════════════════════════════════════════════════════════
+// TOTALES HISTÓRICOS
+// ═══════════════════════════════════════════════════════════
+
+const totalPendienteHistorico = computed(() => {
+  return pedidos.value
+    .filter(p => p.estado === 'pendiente')
+    .reduce((acc, p) => acc + Number(p.total), 0)
+})
+
+const totalGastosHistorico = computed(() => {
+  return gastos.value.reduce((acc, g) => acc + Number(g.total), 0)
+})
+
+const gananciaNetaRealHistorico = computed(() => {
+  const totalCobradoHistorico = pedidos.value
+    .filter(p => p.estado === 'pagado')
+    .reduce((acc, p) => acc + Number(p.total), 0)
+  
+  return totalCobradoHistorico - totalGastosHistorico.value
+})
+
+// ═══════════════════════════════════════════════════════════
+// MÉTODOS DE PAGO - HISTÓRICO (SOLO PAGADO)
+// ═══════════════════════════════════════════════════════════
+
 const metricasMetodosHistorico = computed(() => {
   const porMetodo = {
     efectivo: { total: 0, qty: 0 },
-    transferencia: { total: 0, qty: 0 },
-    mercado_pago: { total: 0, qty: 0 },
-    debito: { total: 0, qty: 0 },
-    credito: { total: 0, qty: 0 }
+    transferencia: { total: 0, qty: 0 }
   }
 
-  // ✅ FIXED: Filtrar SOLO pedidos pagados para consistencia
   pedidos.value
-    .filter(p => p.estado === 'pagado')  // ← ✅ AQUÍ ESTÁ LA CORRECCIÓN
+    .filter(p => p.estado === 'pagado')
     .forEach(pedido => {
       const metodo = pedido.metodo_pago || 'efectivo'
       if (porMetodo[metodo]) {
@@ -511,19 +428,40 @@ const metricasMetodosHistorico = computed(() => {
     efectivo: Math.round(porMetodo.efectivo.total),
     efectivoQty: porMetodo.efectivo.qty,
     transferencia: Math.round(porMetodo.transferencia.total),
-    transferenciaQty: porMetodo.transferencia.qty,
-    mercadoPago: Math.round(porMetodo.mercado_pago.total),
-    mercadoPagoQty: porMetodo.mercado_pago.qty,
-    debito: Math.round(porMetodo.debito.total),
-    debitoQty: porMetodo.debito.qty,
-    credito: Math.round(porMetodo.credito.total),
-    creditoQty: porMetodo.credito.qty
+    transferenciaQty: porMetodo.transferencia.qty
   }
 })
 
 // ═══════════════════════════════════════════════════════════
-// HISTÓRICO TOTAL
+// GASTOS - HISTÓRICO (POR MÉTODO)
 // ═══════════════════════════════════════════════════════════
+
+const gastosMetodosHistorico = computed(() => {
+  const porMetodo = {
+    efectivo: { total: 0, qty: 0 },
+    transferencia: { total: 0, qty: 0 }
+  }
+
+  gastos.value.forEach(gasto => {
+    const metodo = gasto.metodo_pago || 'efectivo'
+    if (porMetodo[metodo]) {
+      porMetodo[metodo].total += Number(gasto.total)
+      porMetodo[metodo].qty++
+    }
+  })
+
+  return {
+    efectivo: Math.round(porMetodo.efectivo.total),
+    efectivoQty: porMetodo.efectivo.qty,
+    transferencia: Math.round(porMetodo.transferencia.total),
+    transferenciaQty: porMetodo.transferencia.qty
+  }
+})
+
+// ═══════════════════════════════════════════════════════════
+// HISTÓRICO TOTAL (Para la vista)
+// ═══════════════════════════════════════════════════════════
+
 const metricasHistorico = computed(() => {
   const totalCobradoHistorico = pedidos.value
     .filter(p => p.estado === 'pagado')
@@ -537,6 +475,7 @@ const metricasHistorico = computed(() => {
 // ═══════════════════════════════════════════════════════════
 // GRÁFICOS
 // ═══════════════════════════════════════════════════════════
+
 const ultimos7dias = computed(() => {
   const nombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
   const dias = []
@@ -547,7 +486,6 @@ const ultimos7dias = computed(() => {
     const siguiente = new Date(fecha)
     siguiente.setDate(siguiente.getDate() + 1)
     
-    // ✅ Solo contar pedidos PAGADOS
     const total = pedidos.value.filter(p => {
       const f = new Date(p.created_at)
       return f >= fecha && f < siguiente && p.estado === 'pagado'
@@ -563,76 +501,6 @@ const ultimos7dias = computed(() => {
   return dias.map(d => ({ ...d, porcentaje: Math.round((d.total / maxTotal) * 100) }))
 })
 
-const COLORES  = { 
-  efectivo: '#C9748A', 
-  transferencia: '#C9A96E', 
-  mercado_pago: '#7A3350', 
-  debito: '#4A8FA8', 
-  credito: '#6B6B6B' 
-}
-
-const LABELS   = { 
-  efectivo: 'Efectivo', 
-  transferencia: 'Transferencia', 
-  mercado_pago: 'Mercado Pago', 
-  debito: 'Débito', 
-  credito: 'Crédito' 
-}
-
-const donutSegmentos = computed(() => {
-  // ✅ Basarse en métodos de pago de este mes
-  const totalGeneral = metricas.value.mesActual
-  if (totalGeneral === 0) return []
-  
-  const porMetodo = {
-    efectivo: metricasMetodos.value.efectivo,
-    transferencia: metricasMetodos.value.transferencia,
-    mercado_pago: metricasMetodos.value.mercadoPago,
-    debito: metricasMetodos.value.debito,
-    credito: metricasMetodos.value.credito
-  }
-  
-  const circunferencia = 301.6
-  let offsetAcumulado = 0
-  
-  return Object.entries(porMetodo)
-    .filter(([_, total]) => total > 0) // Solo mostrar métodos con dinero
-    .map(([metodo, total]) => {
-      const pct  = Math.round((total / totalGeneral) * 100)
-      const arco = (total / totalGeneral) * circunferencia
-      const seg  = {
-        label: LABELS[metodo] || metodo,
-        color: COLORES[metodo] || '#ccc',
-        arco,
-        offset: offsetAcumulado,
-        pct
-      }
-      offsetAcumulado += arco
-      return seg
-    })
-})
-
-const topProductos = computed(() => {
-  const conteo = {}
-  pedidos.value.forEach(pedido => {
-    pedido.pedido_items?.forEach(item => {
-      if (!conteo[item.nombre]) conteo[item.nombre] = { unidades: 0, total: 0 }
-      conteo[item.nombre].unidades += item.cantidad
-      conteo[item.nombre].total    += Number(item.subtotal)
-    })
-  })
-  const lista = Object.entries(conteo)
-    .map(([nombre, data]) => ({ nombre, ...data }))
-    .sort((a, b) => b.unidades - a.unidades)
-    .slice(0, 5)
-  const maxUnidades = lista[0]?.unidades || 1
-  return lista.map(p => ({
-    ...p,
-    total: Math.round(p.total),
-    porcentaje: Math.round((p.unidades / maxUnidades) * 100)
-  }))
-})
-
 const ultimasVentas = computed(() => pedidos.value.slice(0, 10))
 
 function formatFecha(iso) {
@@ -643,13 +511,10 @@ function formatFecha(iso) {
   })
 }
 
-function formatMetodo(m) {
-  return LABELS[m] || m
-}
-
 // ═══════════════════════════════════════════════════════════
 // REALTIME
 // ═══════════════════════════════════════════════════════════
+
 let subscription = null
 
 onMounted(async () => {
@@ -729,43 +594,56 @@ onUnmounted(() => {
   color: var(--rose);
 }
 
-.btn-refresh:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ─── SECCIONES DE MÉTRICAS ─── */
+/* ─── SECCIONES PRINCIPALES ─── */
 .metricas-seccion {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .metricas-seccion__title {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--charcoal);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--rose);
+  display: inline-block;
+}
+
+/* ─── SUBSECCIONES ─── */
+.subseccion {
+  margin-bottom: 18px;
+}
+
+.subseccion__title {
+  font-size: 12px;
   font-weight: 600;
   color: var(--mid);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
-  padding-left: 4px;
-  border-left: 3px solid var(--rose);
+  padding-left: 6px;
+  border-left: 3px solid var(--rose-light);
 }
 
+/* ─── METRICAS GRID ─── */
 .metricas {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 @media (min-width: 640px) {
   .metricas {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 @media (min-width: 1024px) {
   .metricas {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -776,29 +654,32 @@ onUnmounted(() => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  transition: all var(--trans);
 }
 
-.metrica-card--dark {
-  background: var(--charcoal);
-  border-color: var(--charcoal);
+.metrica-card:hover {
+  box-shadow: 0 4px 12px rgba(201, 116, 138, 0.1);
+  transform: translateY(-2px);
 }
 
-.metrica-card--dark .metrica-card__label {
-  color: rgba(255, 255, 255, 0.5);
+.metrica-card--highlight {
+  background: linear-gradient(135deg, #E8F5E8 0%, var(--white) 100%);
+  border-color: #2E7D32;
+  border-width: 2px;
 }
 
-.metrica-card--dark .metrica-card__value {
-  color: white;
-}
-
-.metrica-card--dark .metrica-card__delta {
-  color: rgba(255, 255, 255, 0.4);
+.metrica-card--ganancia,
+.metrica-card--ganancia-historic {
+  background: linear-gradient(135deg, #E8F5E8 0%, var(--white) 100%);
+  border: 2px solid #2E7D32;
+  padding: 20px;
+  grid-column: 1 / -1;
 }
 
 .metrica-card--danger {
-  border-color: #FEEBEE;
-  background: #FFFAFA;
+  background: linear-gradient(135deg, #FEEBEE 0%, var(--white) 100%);
+  border-color: #C62828;
 }
 
 .metrica-card__label {
@@ -809,7 +690,7 @@ onUnmounted(() => {
 }
 
 .metrica-card__value {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--charcoal);
   line-height: 1.2;
@@ -821,10 +702,12 @@ onUnmounted(() => {
 
 .delta--up {
   color: #2E7D32;
+  font-weight: 600;
 }
 
 .delta--down {
   color: #C62828;
+  font-weight: 600;
 }
 
 .delta--neutral {
@@ -836,13 +719,7 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
-  margin-bottom: 16px;
-}
-
-@media (min-width: 640px) {
-  .graficos {
-    grid-template-columns: 1.8fr 1fr;
-  }
+  margin: 24px 0;
 }
 
 .grafico-card {
@@ -854,12 +731,6 @@ onUnmounted(() => {
 
 .grafico-card--wide {
   grid-column: 1 / -1;
-}
-
-@media (min-width: 640px) {
-  .grafico-card--wide {
-    grid-column: 1 / 2;
-  }
 }
 
 .grafico-card__title {
@@ -915,63 +786,7 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.donut-wrap {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.donut-svg {
-  width: 120px;
-  height: 120px;
-  flex-shrink: 0;
-}
-
-.donut-center-label {
-  font-size: 10px;
-  fill: var(--mid);
-  font-family: 'Poppins', system-ui, sans-serif;
-}
-
-.donut-center-value {
-  font-size: 11px;
-  font-weight: 700;
-  fill: var(--charcoal);
-  font-family: 'Poppins', system-ui, sans-serif;
-}
-
-.donut-leyenda {
-  flex: 1;
-  min-width: 120px;
-}
-
-.donut-leyenda__item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  font-size: 11px;
-}
-
-.donut-leyenda__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.donut-leyenda__label {
-  flex: 1;
-  color: var(--charcoal);
-}
-
-.donut-leyenda__pct {
-  font-weight: 600;
-  color: var(--mid);
-}
-
-/* ─── SECCIONES ─── */
+/* ─── OTRAS SECCIONES ─── */
 .seccion-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -985,68 +800,6 @@ onUnmounted(() => {
   font-weight: 600;
   color: var(--charcoal);
   margin-bottom: 16px;
-}
-
-.top-productos {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.top-prod {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.top-prod__rank {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--rose);
-  min-width: 24px;
-}
-
-.top-prod__info {
-  flex: 1;
-}
-
-.top-prod__nombre {
-  font-size: 13px;
-  font-weight: 500;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.top-prod__barra-wrap {
-  height: 6px;
-  background: var(--rose-light);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.top-prod__barra {
-  height: 100%;
-  background: var(--rose);
-  border-radius: 3px;
-  transition: width 0.6s ease;
-}
-
-.top-prod__nums {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-
-.top-prod__unidades {
-  font-size: 11px;
-  color: var(--mid);
-}
-
-.top-prod__total {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--rose-dark);
 }
 
 .ventas-table {
@@ -1095,14 +848,6 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--rose-dark);
   white-space: nowrap;
-}
-
-.td-productos {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--mid);
 }
 
 .estado-badge {
@@ -1187,22 +932,11 @@ onUnmounted(() => {
   }
 
   .metricas {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .metrica-card__value {
-    font-size: 1.1rem;
-  }
-
-  .graficos {
     grid-template-columns: 1fr;
   }
 
-  .ventas-table th:nth-child(3),
-  .ventas-table td:nth-child(3),
-  .ventas-table th:nth-child(5),
-  .ventas-table td:nth-child(5) {
-    display: none;
+  .metrica-card__value {
+    font-size: 1.3rem;
   }
 }
 </style>
