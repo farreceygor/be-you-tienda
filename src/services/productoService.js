@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient'
 import { AppError, ErrorCodes } from '../lib/AppError'
 import { validarImagenProducto } from '../lib/fileValidator'
 
+
 /**
  * --- SECCIÓN: IMÁGENES ---
  */
@@ -273,58 +274,93 @@ export const eliminarVenta = async (venta) => {
  * 
  * Si cualquier paso falla, lanzamos el error para que el caller lo maneje.
  */
+// src/services/productoService.js
+
 export const crearPedido = async (datosPedido, items) => {
-  // Paso 1: crear la cabecera del pedido
-  const { data: pedido, error: errorPedido } = await supabase
-    .from('pedidos')
-    .insert([datosPedido])
-    .select()
-    .single()
+  try {
+    // ✅ 1. Verificar stock ANTES de procesar
+    const validacion = await validarStockVenta(items)
+    if (!validacion.valido) {
+      throw new AppError(
+        validacion.error,
+        ErrorCodes.PEDIDO_STOCK_INSUFFICIENT,
+        { items },
+        400
+      )
+    }
 
-  if (errorPedido) throw errorPedido
+    // ✅ 2. Crear pedido
+    const { data: pedido, error: errorPedido } = await supabase
+      .from('pedidos')
+      .insert([datosPedido])
+      .select()
+      .single()
 
-  // Paso 2: insertar líneas de detalle con descuentos por item
-  const lineas = items.map(item => ({
-    pedido_id:        pedido.id,
-    producto_id:      item.producto_id,
-    nombre:           item.nombre,
-    cantidad:         item.cantidad,
-    precio_unit:      item.precio_unit,
-    subtotal:         item.subtotal,
-    descuento_tipo:   item.descuento_tipo   || null,
-    descuento_valor:  item.descuento_valor  || 0,
-    descuento_monto:  item.descuento_monto  || 0
-  }))
+    if (errorPedido) throw errorPedido
 
-  const { error: errorItems } = await supabase
-    .from('pedido_items')
-    .insert(lineas)
+    // ✅ 3. Insertar líneas de detalle
+    const lineas = items.map(item => ({
+      pedido_id: pedido.id,
+      producto_id: item.producto_id,
+      nombre: item.nombre,
+      cantidad: item.cantidad,
+      precio_unit: item.precio_unit,
+      subtotal: item.subtotal,
+      descuento_tipo: item.descuento_tipo || null,
+      descuento_valor: item.descuento_valor || 0,
+      descuento_monto: item.descuento_monto || 0
+    }))
 
-  if (errorItems) throw errorItems
+    const { error: errorItems } = await supabase
+      .from('pedido_items')
+      .insert(lineas)
 
-  // Paso 3: descontar stock
-  await Promise.all(
-    items.map(async (item) => {
-      if (!item.producto_id) return
-      const { data: prod, error: errorStock } = await supabase
+    if (errorItems) throw errorItems
+
+    // ✅ 4. Descontar stock CON VALIDACIÓN
+    // ⚠️ Este es el punto crítico: hacerlo item por item en paralelo NO es seguro
+    // Mejor: Una sola query UPDATE que usa Math en la BD
+    
+    for (const item of items) {
+      if (!item.producto_id) continue
+
+      // ✅ Mejor opción: Usar PostgreSQL RPC o stored procedure
+      // Para ahora, usamos verificación + update secuencial
+      
+      const { data: prodActual, error: errorCheck } = await supabase
         .from('productos')
         .select('stock')
         .eq('id', item.producto_id)
         .single()
 
-      if (errorStock) throw errorStock
+      if (errorCheck) throw errorCheck
 
-      const nuevoStock = Math.max(0, prod.stock - item.cantidad)
+      // ✅ Validar OTRA VEZ antes de actualizar
+      const nuevoStock = prodActual.stock - item.cantidad
+      if (nuevoStock < 0) {
+        throw new AppError(
+          `"${item.nombre}" solo tiene ${prodActual.stock}, pediste ${item.cantidad}`,
+          ErrorCodes.PEDIDO_STOCK_INSUFFICIENT,
+          { producto_id: item.producto_id, stock: prodActual.stock, solicitado: item.cantidad },
+          400
+        )
+      }
+
       const { error: errorUpdate } = await supabase
         .from('productos')
         .update({ stock: nuevoStock })
         .eq('id', item.producto_id)
 
       if (errorUpdate) throw errorUpdate
-    })
-  )
+    }
 
-  return pedido
+    return pedido
+  } catch (error) {
+    // Si cualquier paso falla, se lanza excepción
+    // La BD se rollback automáticamente si usas transacciones
+    logger.error('Error en crearPedido', error)
+    throw error
+  }
 }
 
 /**

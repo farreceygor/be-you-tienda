@@ -26,17 +26,20 @@
       <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1 text-left">Elegir variedades:</label>
       <select 
         v-model="varianteLocal" 
-        class="w-full p-2 text-xs border border-gray-200 rounded-lg bg-white outline-none focus:border-pink-300"
+        class="w-full p-2 text-xs border border-gray-200 rounded-lg"
       >
         <option value="" disabled selected>Seleccionar...</option>
         <option 
-          v-for="v in info.variantes.split(',')" 
-          :key="v" 
-          :value="v.trim()"
-        >
-          {{ v.trim() }}
-        </option>
-      </select>
+          v-for="v in (info.variantes || '')
+            .split(',')
+            .map(x => x.trim())          // ← Trimear aquí
+            .filter(Boolean)" 
+            :key="v" 
+            :value="v"
+          >
+            {{ v }}
+          </option>
+        </select>
     </div>
     
     <button 

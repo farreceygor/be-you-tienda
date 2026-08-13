@@ -370,7 +370,13 @@ const descuentoGastoMonto = computed(() => {
 })
 
 function onDescuentoGastoChange() {
-  if (!datosGasto.descuento_tipo) datosGasto.descuento_valor = 0
+  if (!datosGasto.descuento_tipo) {
+    datosGasto.descuento_valor = 0
+  }
+  // ✅ Validar que no sea negativo
+  if (datosGasto.descuento_valor < 0) {
+    datosGasto.descuento_valor = 0
+  }
 }
 
 const totalGasto = computed(() =>

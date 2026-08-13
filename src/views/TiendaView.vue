@@ -392,7 +392,7 @@ import { useAuth } from '../composables/useAuth'
 import { useCarrito } from '../composables/useCarrito'
 import { useProductos } from '../composables/useProductos'
 import { fetchProductos, fetchCategorias, fetchBanners } from '../services/productoService'
-
+import { logger } from '../lib/logger'
 const router = useRouter()
 
 // ─── ESTADO UI ───────────────────────────────────────────────────
@@ -491,7 +491,13 @@ function moverBanner(dir) {
 function irBanner(n)    { bannerActual.value = n }
 function pausarBanner() { clearInterval(bannerTimer) }
 function reanudarBanner() {
-  if (bannerSlides.value.length === 0) return
+  // Validar array no vacío
+  if (!Array.isArray(bannerSlides.value) || bannerSlides.value.length === 0) {
+    logger.debug('No hay banners para mostrar')
+    return
+  }
+  
+  clearInterval(bannerTimer)  // Limpiar anterior si existe
   bannerTimer = setInterval(() => moverBanner(1), 4500)
 }
 
@@ -521,18 +527,42 @@ onMounted(async () => {
   window.addEventListener('scroll', onScroll)
 
   try {
-    // Cargamos banners y productos en paralelo
+    logger.debug('Inicializando datos de tienda')
+    
+    // Cargar en paralelo
     const [slides] = await Promise.all([
       fetchBanners(),
       cargarDatos()
     ])
-    bannerSlides.value = slides
+    
+    // ✅ DEBUG: Ver qué retorna fetchBanners()
+    console.log('🖼️ fetchBanners() retornó:', slides)
+    console.log('¿Es array?', Array.isArray(slides))
+    console.log('¿Tiene elementos?', slides?.length)
+    
+    // ✅ Validar que slides sea un array válido
+    bannerSlides.value = Array.isArray(slides) && slides.length > 0 ? slides : []
+    
+    logger.info('Datos inicializados', {
+      banners: bannerSlides.value.length,
+      productos: productos.value.length  // ✅ Cambié productosCargados → productos
+    })
+    
+    console.log('✅ bannerSlides.value después de asignar:', bannerSlides.value)
   } catch (e) {
-    console.error('Error al inicializar:', e)
+    console.error('❌ Error al inicializar:', e)
+    console.error('Stack completo:', e.stack)
+    bannerSlides.value = []
+    logger.error('Error en inicializarDatos', e)
+  } finally {
+    // ✅ Reanuda solo si hay banners
+    if (bannerSlides.value.length > 0) {
+      console.log('▶️ Iniciando carrusel con', bannerSlides.value.length, 'banners')
+      reanudarBanner()
+    } else {
+      console.warn('⚠️ Sin banners para mostrar - carrusel deshabilitado')
+    }
   }
-
-  // Arrancamos el banner después de tener los datos
-  reanudarBanner()
 })
 
 onUnmounted(() => {
@@ -1060,6 +1090,7 @@ onUnmounted(() => {
   margin-bottom: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

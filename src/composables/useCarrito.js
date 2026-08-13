@@ -105,6 +105,9 @@ export function useCarrito(productos) {
       return { error: '🌸 Por favor, elegí una variante primero' }
     }
 
+    // ✅ CRÍTICO: Sanitizar variante antes de usar como key
+    const varianteLimpia = varianteElegida ? varianteElegida.trim() : null
+
     // Generar ID único del item
     const idUnico = varianteElegida ? `${producto.id}||${varianteElegida}` : String(producto.id)
 

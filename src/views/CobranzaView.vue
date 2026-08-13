@@ -166,7 +166,11 @@
     </div>
 
     <div class="venta-item__qty">
-      <button class="qty-btn" @click="cambiarCantidadItem(idx, -1)">−</button>
+      <button
+  class="qty-btn"
+  :disabled="item.cantidad >= item.stock" 
+  @click="cambiarCantidadItem(idx, 1)"
+>+</button>
       <span class="qty-num">{{ item.cantidad }}</span>
       <button class="qty-btn" :disabled="item.cantidad >= item.stock" @click="cambiarCantidadItem(idx, 1)">+</button>
     </div>
@@ -461,11 +465,22 @@ const subtotalItems = computed(() =>
 
 // Monto del descuento general calculado
 const descuentoGeneralMonto = computed(() => {
-  if (!descuentoGeneral.tipo || descuentoGeneral.valor <= 0) return 0
-  if (descuentoGeneral.tipo === 'porcentaje') {
-    return Math.round(subtotalItems.value * (descuentoGeneral.valor / 100))
+  if (!descuentoGeneral.tipo || descuentoGeneral.valor <= 0) {
+    return 0  // ← Descuento negativo o cero → no aplica
   }
-  return Math.min(descuentoGeneral.valor, subtotalItems.value)
+
+  if (descuentoGeneral.tipo === 'porcentaje') {
+    // ✅ Asegurar que valor esté entre 0-100
+    const porcentajeValido = Math.max(0, Math.min(100, descuentoGeneral.valor))
+    return Math.round(subtotalItems.value * (porcentajeValido / 100))
+  }
+
+  if (descuentoGeneral.tipo === 'monto') {
+    // ✅ El descuento no puede superar el subtotal
+    return Math.min(Math.max(0, descuentoGeneral.valor), subtotalItems.value)
+  }
+
+  return 0
 })
 
 // Total final de la venta (Con descuento general aplicado)
@@ -526,13 +541,17 @@ async function confirmarVenta() {
       notas: datosPedido.notas || null,
       subtotal: subtotalItems.value,
       descuento_tipo: descuentoGeneral.tipo || null,
-      descuento_valor: descuentoGeneral.valor || 0,
-      descuento_monto: descuentoGeneralMonto.value,
-      total: totalVenta.value
+      descuento_valor: Math.max(0, Number(descuentoGeneral.valor)),
+      descuento_monto: Math.max(0, descuentoGeneralMonto.value),
+      total: Math.max(0, totalVenta.value)
+    }
+
+    if (cabecera.total < 0) {
+      mostrarToast('❌ Error: El total de la venta no puede ser negativo')
+      return // Detener si el total es negativo
     }
 
     await crearPedido(cabecera, itemsVenta.value)
-
     // Limpiar todo
     itemsVenta.value = []
     descuentoGeneral.tipo = null

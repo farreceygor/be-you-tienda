@@ -544,13 +544,19 @@ async function guardarProducto() {
     let url = nuevoProducto.value.imagen_url
     if (imagenArchivo.value) url = await subirImagenProducto(imagenArchivo.value)
 
-    const datosFinales = {
-      nombre:       nuevoProducto.value.nombre.trim(),
-      precio:       Number(nuevoProducto.value.precio),
-      stock:        Number(nuevoProducto.value.stock),
+    const variantes = (nuevoProducto.value.variantes || '')
+      .split(',')
+      .map(v => v.trim())           // ← Quita espacios
+      .filter(v => v.length > 0)     // ← Elimina vacías
+      .join(', ')                   // ← Reconstruye con formato consistente
+
+      const datosFinales = {
+      nombre: nuevoProducto.value.nombre.trim(),
+      precio: Number(nuevoProducto.value.precio),
+      stock: Number(nuevoProducto.value.stock),
       categoria_id: nuevoProducto.value.categoria_id,
-      imagen_url:   url,
-      variantes:    (nuevoProducto.value.variantes || '').trim()
+      imagen_url: url,
+      variantes: variantes  // ✅ Limpio
     }
 
     if (editandoId.value) {
