@@ -168,13 +168,15 @@
                 <option value="monto">$ Monto fijo</option>
               </select>
               <input
-                v-if="datosGasto.descuento_tipo"
-                v-model.number="datosGasto.descuento_valor"
-                type="number"
-                min="0"
-                class="item-descuento__input"
-                :placeholder="datosGasto.descuento_tipo === 'porcentaje' ? '10' : '500'"
-              />
+  v-if="datosGasto.descuento_tipo"
+  v-model.number="datosGasto.descuento_valor"
+  type="number"
+  min="0"
+  max="999999"
+  class="item-descuento__input"
+  :placeholder="datosGasto.descuento_tipo === 'porcentaje' ? '10' : '500'"
+  @input="validarDescuentoGasto"
+  />
               <span v-if="descuentoGastoMonto > 0" class="item-descuento__badge">
                 -${{ descuentoGastoMonto.toLocaleString('es-AR') }}
               </span>
@@ -309,6 +311,7 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
 import { crearGasto, fetchGastos, eliminarGasto, actualizarGasto } from '../services/productoService'
+import { logger } from '../lib/logger'
 
 // ─── ESTADO ──────────────────────────────────────────────────────
 const vistaActual       = ref('nuevo')
@@ -359,14 +362,42 @@ const subtotalProductos = computed(() =>
 )
 
 // ─── DESCUENTO DEL PROVEEDOR ─────────────────────────────────────
+
+function validarDescuentoGasto() {
+  if (!datosGasto.descuento_tipo) {
+    datosGasto.descuento_valor = 0
+    return
+  }
+
+  if (datosGasto.descuento_valor < 0) {
+    datosGasto.descuento_valor = 0
+    mostrarToast('⚠️ El descuento no puede ser negativo')
+    return
+  }
+
+  if (datosGasto.descuento_tipo === 'porcentaje' && datosGasto.descuento_valor > 100) {
+    datosGasto.descuento_valor = 100
+    mostrarToast('⚠️ El descuento no puede superar 100%')
+    return
+  }
+
+  if (datosGasto.descuento_tipo === 'monto' && datosGasto.descuento_valor > subtotalProductos.value) {
+    datosGasto.descuento_valor = subtotalProductos.value
+    mostrarToast(`⚠️ Descuento limitado a $${subtotalProductos.value.toLocaleString('es-AR')}`)
+    return
+  }
+}
+
 const descuentoGastoMonto = computed(() => {
-  if (!datosGasto.descuento_tipo || !datosGasto.descuento_valor || datosGasto.descuento_valor <= 0) {
+  if (!datosGasto.descuento_tipo || datosGasto.descuento_valor <= 0) {
     return 0
   }
   if (datosGasto.descuento_tipo === 'porcentaje') {
-    return Math.round(subtotalProductos.value * (datosGasto.descuento_valor / 100))
+    const porcentajeValido = Math.max(0, Math.min(100, datosGasto.descuento_valor))
+    return Math.round(subtotalProductos.value * (porcentajeValido / 100))
   }
-  return Math.min(datosGasto.descuento_valor, subtotalProductos.value)
+  const montoValido = Math.max(0, datosGasto.descuento_valor)
+  return Math.min(montoValido, subtotalProductos.value)
 })
 
 function onDescuentoGastoChange() {
@@ -385,13 +416,13 @@ const totalGasto = computed(() =>
 
 // ─── DATOS DEL GASTO ─────────────────────────────────────────────
 const datosGasto = reactive({
-  fecha:            new Date().toISOString().split('T')[0],
-  proveedor:        '',
-  costo_envio:      0,
-  metodo_pago:      'efectivo',
-  notas:            '',
-  descuento_tipo:   null,
-  descuento_valor:  0
+  fecha: new Date().toISOString().split('T')[0],
+  proveedor: '',
+  costo_envio: 0,
+  metodo_pago: 'efectivo',
+  notas: '',
+  descuento_tipo: null,
+  descuento_valor: 0
 })
 
 // ─── EDICIÓN ─────────────────────────────────────────────────────
@@ -400,20 +431,20 @@ const gastoEditandoId = ref(null)
 function prepararEdicionGasto(gasto) {
   gastoEditandoId.value = gasto.id
 
-  datosGasto.fecha           = gasto.fecha
-  datosGasto.proveedor       = gasto.proveedor || ''
-  datosGasto.costo_envio     = gasto.costo_envio || 0
-  datosGasto.metodo_pago     = gasto.metodo_pago || 'efectivo'
-  datosGasto.notas           = gasto.notas || ''
-  datosGasto.descuento_tipo  = gasto.descuento_tipo || null
+  datosGasto.fecha = gasto.fecha
+  datosGasto.proveedor = gasto.proveedor || ''
+  datosGasto.costo_envio = gasto.costo_envio || 0
+  datosGasto.metodo_pago = gasto.metodo_pago || 'efectivo'
+  datosGasto.notas = gasto.notas || ''
+  datosGasto.descuento_tipo = gasto.descuento_tipo || null
   datosGasto.descuento_valor = gasto.descuento_valor || 0
 
   itemsGasto.value = (gasto.gasto_items || []).map(item => ({
-    producto_id:  item.producto_id || null,
-    nombre:       item.nombre,
-    cantidad:     item.cantidad,
+    producto_id: item.producto_id || null,
+    nombre: item.nombre,
+    cantidad: item.cantidad,
     precio_costo: item.precio_costo,
-    subtotal:     item.subtotal
+    subtotal: item.subtotal
   }))
 
   vistaActual.value = 'nuevo'
@@ -421,14 +452,14 @@ function prepararEdicionGasto(gasto) {
 }
 
 function cancelarEdicionGasto() {
-  gastoEditandoId.value  = null
-  itemsGasto.value       = []
-  datosGasto.fecha           = new Date().toISOString().split('T')[0]
-  datosGasto.proveedor       = ''
-  datosGasto.costo_envio     = 0
-  datosGasto.metodo_pago     = 'efectivo'
-  datosGasto.notas           = ''
-  datosGasto.descuento_tipo  = null
+  gastoEditandoId.value = null
+  itemsGasto.value = []
+  datosGasto.fecha = new Date().toISOString().split('T')[0]
+  datosGasto.proveedor = ''
+  datosGasto.costo_envio = 0
+  datosGasto.metodo_pago = 'efectivo'
+  datosGasto.notas = ''
+  datosGasto.descuento_tipo = null
   datosGasto.descuento_valor = 0
 }
 
@@ -437,15 +468,15 @@ async function confirmarGasto() {
   cargando.value = true
   try {
     const cabecera = {
-      fecha:            datosGasto.fecha,
-      proveedor:        datosGasto.proveedor   || null,
-      costo_envio:      Number(datosGasto.costo_envio) || 0,
-      metodo_pago:      datosGasto.metodo_pago,
-      notas:            datosGasto.notas       || null,
-      descuento_tipo:   datosGasto.descuento_tipo || null,
-      descuento_valor:  datosGasto.descuento_valor || 0,
-      descuento_monto:  descuentoGastoMonto.value,
-      total:             totalGasto.value
+      fecha: datosGasto.fecha,
+      proveedor: datosGasto.proveedor || null,
+      costo_envio: Number(datosGasto.costo_envio) || 0,
+      metodo_pago: datosGasto.metodo_pago,
+      notas: datosGasto.notas || null,
+      descuento_tipo: datosGasto.descuento_tipo || null,
+      descuento_valor: datosGasto.descuento_valor || 0,
+      descuento_monto: descuentoGastoMonto.value,
+      total: totalGasto.value
     }
 
     if (gastoEditandoId.value) {
@@ -469,8 +500,8 @@ async function confirmarGasto() {
 }
 
 // ─── HISTORIAL ───────────────────────────────────────────────────
-const gastos          = ref([])
-const gastoExpandido  = ref(null)
+const gastos = ref([])
+const gastoExpandido = ref(null)
 const busquedaHistorial = ref('')
 const filtroMetodoGasto = ref('')
 
@@ -516,18 +547,18 @@ const resumenMes = reactive({ total: 0, envios: 0, cantidad: 0, historico: 0 })
 async function cargarResumen() {
   try {
     const data = await fetchGastos()
-    const ahora     = new Date()
-    const mes       = ahora.getMonth()
-    const año       = ahora.getFullYear()
+    const ahora = new Date()
+    const mes = ahora.getMonth()
+    const año = ahora.getFullYear()
 
     const deMes = data.filter(g => {
       const f = new Date(g.fecha)
       return f.getMonth() === mes && f.getFullYear() === año
     })
 
-    resumenMes.cantidad  = deMes.length
-    resumenMes.total     = deMes.reduce((acc, g) => acc + Number(g.total), 0)
-    resumenMes.envios    = deMes.reduce((acc, g) => acc + Number(g.costo_envio), 0)
+    resumenMes.cantidad = deMes.length
+    resumenMes.total = deMes.reduce((acc, g) => acc + Number(g.total), 0)
+    resumenMes.envios = deMes.reduce((acc, g) => acc + Number(g.costo_envio), 0)
     resumenMes.historico = data.reduce((acc, g) => acc + Number(g.total), 0)
   } catch (e) {
     console.error('Error cargando resumen gastos:', e)

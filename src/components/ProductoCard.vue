@@ -24,22 +24,24 @@
 
     <div v-if="info.variantes && info.stock > 0" class="mb-3 px-1">
       <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1 text-left">Elegir variedades:</label>
-      <select 
-        v-model="varianteLocal" 
-        class="w-full p-2 text-xs border border-gray-200 rounded-lg"
-      >
-        <option value="" disabled selected>Seleccionar...</option>
-        <option 
-          v-for="v in (info.variantes || '')
-            .split(',')
-            .map(x => x.trim())          // ← Trimear aquí
-            .filter(Boolean)" 
-            :key="v" 
-            :value="v"
-          >
-            {{ v }}
-          </option>
-        </select>
+      <!-- ✅ DESPUÉS - Sanitizar en el loop -->
+<select 
+  v-model="varianteLocal" 
+  class="w-full p-2 text-xs border border-gray-200 rounded-lg"
+>
+  <option value="" disabled selected>Seleccionar...</option>
+  <!-- ✅ Sanitizar: split → trim → filter vacías -->
+  <option 
+    v-for="v in (info.variantes || '')
+      .split(',')
+      .map(x => x.trim())
+      .filter(Boolean)" 
+    :key="v" 
+    :value="v"
+  >
+    {{ v }}
+  </option>
+</select>
     </div>
     
     <button 

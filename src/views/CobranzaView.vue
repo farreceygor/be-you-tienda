@@ -195,8 +195,10 @@
                 v-model.number="descuentoGeneral.valor"
                 type="number"
                 min="0"
+                max="999999"
                 class="item-descuento__input"
                 :placeholder="descuentoGeneral.tipo === 'porcentaje' ? '10' : '1000'"
+                @input="validarDescuentoGeneral"
               />
             </div>
           </div>
@@ -401,10 +403,21 @@ function cerrarSearchConRetraso() {
   setTimeout(() => { searchAbierto.value = false }, 200)
 }
 
+// ✅ DESPUÉS - Si el producto tiene variantes, abrir selector
 function seleccionarProducto(p) {
-  if (p.stock <= 0) return
+  if (p.stock <= 0) {
+    mostrarToast('⚠️ Este producto no tiene stock')
+    return
+  }
 
-  const existe = itemsVenta.value.find(i => i.producto_id === p.id)
+  // ✅ Si tiene variantes, OBLIGAR a elegir una
+  if (p.variantes && p.variantes.trim() !== '') {
+    mostrarToast('🌸 Este producto tiene opciones. Elige una desde el catálogo')
+    // Podríamos abrir modal aquí en futuro
+    return
+  }
+
+  const existe = itemsVenta.value.find(i => i.producto_id === p.id && !i.variante)
   if (existe) {
     if (existe.cantidad < existe.stock) {
       existe.cantidad++
@@ -419,6 +432,7 @@ function seleccionarProducto(p) {
       cantidad: 1,
       subtotal: p.precio,
       stock: p.stock,
+      variante: null,  // ✅ Agregar variante
       descuento_tipo: null,
       descuento_valor: 0,
       descuento_monto: 0
@@ -430,6 +444,40 @@ function seleccionarProducto(p) {
 }
 
 // ─── DESCUENTOS ──────────────────────────────────────────────────
+function validarDescuentoGeneral() {
+  // Si no hay tipo seleccionado, no validar
+  if (!descuentoGeneral.tipo) {
+    descuentoGeneral.valor = 0
+    return
+  }
+
+  // ✅ Validación 1: No permitir negativos
+  if (descuentoGeneral.valor < 0) {
+    descuentoGeneral.valor = 0
+    mostrarToast('⚠️ El descuento no puede ser negativo')
+    return
+  }
+
+  // ✅ Validación 2: Para porcentajes, max 100%
+  if (descuentoGeneral.tipo === 'porcentaje' && descuentoGeneral.valor > 100) {
+    descuentoGeneral.valor = 100
+    mostrarToast('⚠️ El descuento no puede superar 100%')
+    return
+  }
+
+  // ✅ Validación 3: Para montos, no superar el subtotal
+  if (descuentoGeneral.tipo === 'monto' && descuentoGeneral.valor > subtotalItems.value) {
+    descuentoGeneral.valor = subtotalItems.value
+    mostrarToast(`⚠️ Descuento limitado a $${subtotalItems.value.toLocaleString('es-AR')}`)
+    return
+  }
+
+  // Si todo está bien, no hay error
+  logger.debug('Descuento validado', {
+    tipo: descuentoGeneral.tipo,
+    valor: descuentoGeneral.valor
+  })
+}
 
 // Recalcula el subtotal de un item aplicando su descuento
 function recalcularItem(item) {
@@ -465,19 +513,22 @@ const subtotalItems = computed(() =>
 
 // Monto del descuento general calculado
 const descuentoGeneralMonto = computed(() => {
+  // ✅ Si no hay tipo o valor es 0 o negativo, retornar 0
   if (!descuentoGeneral.tipo || descuentoGeneral.valor <= 0) {
-    return 0  // ← Descuento negativo o cero → no aplica
+    return 0
   }
 
+  // ✅ Para porcentajes: asegurar que esté entre 0-100
   if (descuentoGeneral.tipo === 'porcentaje') {
-    // ✅ Asegurar que valor esté entre 0-100
     const porcentajeValido = Math.max(0, Math.min(100, descuentoGeneral.valor))
-    return Math.round(subtotalItems.value * (porcentajeValido / 100))
+    const monto = Math.round(subtotalItems.value * (porcentajeValido / 100))
+    return Math.max(0, monto)  // ✅ El resultado también debe ser >= 0
   }
 
+  // ✅ Para montos: no superar el subtotal
   if (descuentoGeneral.tipo === 'monto') {
-    // ✅ El descuento no puede superar el subtotal
-    return Math.min(Math.max(0, descuentoGeneral.valor), subtotalItems.value)
+    const montoValido = Math.max(0, descuentoGeneral.valor)
+    return Math.min(montoValido, subtotalItems.value)
   }
 
   return 0
@@ -522,8 +573,11 @@ const datosPedido = reactive({
 })
 
 async function confirmarVenta() {
-  if (itemsVenta.value.length === 0) return
-  
+  if (itemsVenta.value.length === 0){
+    mostrarToast('⚠️ Agrega productos al carrito')
+    return
+  }
+   
   // ✅ VALIDAR STOCK ANTES DE PROCESAR
   const validacion = await validarStockVenta(itemsVenta.value)
   if (!validacion.valido) {
@@ -533,6 +587,17 @@ async function confirmarVenta() {
 
   cargando.value = true
   try {
+    // ✅ NUEVA VALIDACIÓN: Asegurar que descuentos sean válidos
+    if (descuentoGeneral.valor < 0) {
+      throw new Error('El descuento no puede ser negativo')
+    }
+    if (descuentoGeneral.tipo === 'porcentaje' && descuentoGeneral.valor > 100) {
+      throw new Error('El descuento no puede superar 100%')
+    }
+    if (descuentoGeneral.tipo === 'monto' && descuentoGeneralMonto.value > subtotalItems.value) {
+      throw new Error('El descuento no puede superar el subtotal')
+    }
+
     const cabecera = {
       cliente: datosPedido.cliente || null,
       telefono: datosPedido.telefono || null,
@@ -541,7 +606,7 @@ async function confirmarVenta() {
       notas: datosPedido.notas || null,
       subtotal: subtotalItems.value,
       descuento_tipo: descuentoGeneral.tipo || null,
-      descuento_valor: Math.max(0, Number(descuentoGeneral.valor)),
+      descuento_valor: Math.max(0, descuentoGeneral.valor || 0),
       descuento_monto: Math.max(0, descuentoGeneralMonto.value),
       total: Math.max(0, totalVenta.value)
     }

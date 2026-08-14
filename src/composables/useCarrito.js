@@ -93,46 +93,49 @@ export function useCarrito(productos) {
    * @param {string} varianteElegida - Variante seleccionada (opcional)
    * @returns {Object} {error: null | mensaje}
    */
-  function agregarAlCarrito(producto, varianteElegida = null) {
-    // Validar que el producto existe
-    if (!producto || !producto.id) {
-      return { error: '❌ Producto inválido' }
-    }
-
-    // Si tiene variantes, validar que se eligió una
-    const tieneVariantes = producto.variantes && producto.variantes.trim() !== ''
-    if (tieneVariantes && !varianteElegida) {
-      return { error: '🌸 Por favor, elegí una variante primero' }
-    }
-
-    // ✅ CRÍTICO: Sanitizar variante antes de usar como key
-    const varianteLimpia = varianteElegida ? varianteElegida.trim() : null
-
-    // Generar ID único del item
-    const idUnico = varianteElegida ? `${producto.id}||${varianteElegida}` : String(producto.id)
-
-    // Validar stock
-    const cantActual = carrito.value[idUnico]?.cantidad || 0
-    if (cantActual >= producto.stock) {
-      return { error: '⚠️ Stock máximo alcanzado' }
-    }
-
-    // Si ya existe, incrementar cantidad
-    if (carrito.value[idUnico]) {
-      carrito.value[idUnico].cantidad++
-    } else {
-      // Si no existe, crear nuevo item
-      carrito.value[idUnico] = {
-        nombre: varianteElegida ? `${producto.nombre} (${varianteElegida})` : producto.nombre,
-        precio: producto.precio,
-        cantidad: 1,
-        idOriginal: producto.id
-      }
-    }
-
-    guardarCarritoLocal()
-    return { error: null }
+  // ✅ DESPUÉS - Sanitizar variante antes de usar
+function agregarAlCarrito(producto, varianteElegida = null) {
+  if (!producto || !producto.id) {
+    return { error: '❌ Producto inválido' }
   }
+
+  const tieneVariantes = producto.variantes && producto.variantes.trim() !== ''
+  if (tieneVariantes && !varianteElegida) {
+    return { error: '🌸 Por favor, elegí una variante primero' }
+  }
+
+  // ✅ CRÍTICO: Sanitizar variante ANTES de usar como key
+  const varianteLimpia = varianteElegida ? varianteElegida.trim() : null
+
+  // Generar ID único con variante limpia
+  const idUnico = varianteLimpia 
+    ? `${producto.id}||${varianteLimpia}` 
+    : String(producto.id)
+
+  // Validar stock
+  const cantActual = carrito.value[idUnico]?.cantidad || 0
+  if (cantActual >= producto.stock) {
+    return { error: '⚠️ Stock máximo alcanzado' }
+  }
+
+  // Si ya existe, incrementar cantidad
+  if (carrito.value[idUnico]) {
+    carrito.value[idUnico].cantidad++
+  } else {
+    // Si no existe, crear nuevo item
+    carrito.value[idUnico] = {
+      nombre: varianteLimpia 
+        ? `${producto.nombre} (${varianteLimpia})` 
+        : producto.nombre,
+      precio: producto.precio,
+      cantidad: 1,
+      idOriginal: producto.id
+    }
+  }
+
+  guardarCarritoLocal()
+  return { error: null }
+}
 
   /**
    * Cambia la cantidad de un item en el carrito
