@@ -349,6 +349,16 @@
     </transition>
 
   </div>
+  <ConfirmDialog
+  :isVisible="confirmDialog.isVisible"
+  :titulo="confirmDialog.titulo"
+  :mensaje="confirmDialog.mensaje"
+  :textoBoton="confirmDialog.textoBoton"
+  :isDanger="confirmDialog.isDanger"
+  :cargando="confirmDialog.cargando"
+  @confirmar="confirmDialog.accion"
+  @cancelar="confirmDialog.isVisible = false"
+/>
 </template>
 
 <script setup>
@@ -369,12 +379,29 @@ import {
 import { useCarrito } from '../composables/useCarrito'
 import { AppError } from '../lib/AppError'
 import { logger } from '../lib/logger'
-
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 // ─── ESTADO GENERAL ──────────────────────────────────────────────
 const vistaActual = ref('nueva')
 const cargando = ref(false)
 const cargandoHistorial = ref(false)
+const confirmDialog = reactive({
+  isVisible: false,
+  titulo: '',
+  mensaje: '',
+  textoBoton: 'Confirmar',
+  isDanger: false,
+  cargando: false,
+  accion: null
+})
 
+function mostrarConfirm(opciones) {
+  confirmDialog.titulo = opciones.titulo || 'Confirmar'
+  confirmDialog.mensaje = opciones.mensaje || '¿Estás seguro?'
+  confirmDialog.textoBoton = opciones.textoBoton || 'Confirmar'
+  confirmDialog.isDanger = opciones.isDanger ?? false
+  confirmDialog.accion = opciones.accion
+  confirmDialog.isVisible = true
+}
 // ─── PRODUCTOS ───────────────────────────────────────────────────
 const todosLosProductos = ref([])
 const busquedaProd = ref('')
@@ -573,21 +600,21 @@ const datosPedido = reactive({
 })
 
 async function confirmarVenta() {
-  if (itemsVenta.value.length === 0){
+  if (itemsVenta.value.length === 0) {
     mostrarToast('⚠️ Agrega productos al carrito')
     return
   }
-   
-  // ✅ VALIDAR STOCK ANTES DE PROCESAR
-  const validacion = await validarStockVenta(itemsVenta.value)
+
+  // ✅ VALIDACIÓN 1: Verificar stock ANTES (primera vez)
+  let validacion = await validarStockVenta(itemsVenta.value)
   if (!validacion.valido) {
     mostrarToast(`⚠️ ${validacion.error}`)
-    return // Detener si hay problemas de stock
+    return
   }
 
   cargando.value = true
   try {
-    // ✅ NUEVA VALIDACIÓN: Asegurar que descuentos sean válidos
+    // ✅ Validaciones de descuentos (ya existen)
     if (descuentoGeneral.valor < 0) {
       throw new Error('El descuento no puede ser negativo')
     }
@@ -596,6 +623,16 @@ async function confirmarVenta() {
     }
     if (descuentoGeneral.tipo === 'monto' && descuentoGeneralMonto.value > subtotalItems.value) {
       throw new Error('El descuento no puede superar el subtotal')
+    }
+
+    // ✅ VALIDACIÓN 2: Verificar stock de NUEVO (por si cambió)
+    validacion = await validarStockVenta(itemsVenta.value)
+    if (!validacion.valido) {
+      mostrarToast(`⚠️ ${validacion.error}`)
+      cargando.value = false
+      // Recargar productos para mostrar stock actual
+      todosLosProductos.value = await fetchProductosAdmin()
+      return
     }
 
     const cabecera = {
@@ -611,13 +648,15 @@ async function confirmarVenta() {
       total: Math.max(0, totalVenta.value)
     }
 
+    // ✅ Validación final
     if (cabecera.total < 0) {
-      mostrarToast('❌ Error: El total de la venta no puede ser negativo')
-      return // Detener si el total es negativo
+      throw new Error('Error crítico: El total no puede ser negativo')
     }
 
+    // ✅ CREAR PEDIDO
     await crearPedido(cabecera, itemsVenta.value)
-    // Limpiar todo
+
+    // Limpiar y recargar
     itemsVenta.value = []
     descuentoGeneral.tipo = null
     descuentoGeneral.valor = 0
@@ -629,22 +668,16 @@ async function confirmarVenta() {
 
     await cargarResumenHoy()
     todosLosProductos.value = await fetchProductosAdmin()
+    confirmDialog.isVisible = false
     mostrarToast('✅ Venta registrada correctamente')
-    
-    // Pausa visual
+
     await new Promise(r => setTimeout(r, 800))
   } catch (e) {
-    // ✅ USAR LOGGER ESTRUCTURADO
-    if (e instanceof AppError) {
-      logger.error('Error en confirmarVenta (AppError)', e)
-      mostrarToast(`❌ ${e.message}`)
-    } else {
-      logger.error('Error inesperado en confirmarVenta', e)
-      mostrarToast('❌ Error inesperado, contacta al admin')
-    }
+    logger.error('Error en confirmarVenta', e)
+    mostrarToast(`❌ Error: ${e.message}`)
   } finally {
-      cargando.value = false
-    }
+    cargando.value = false
+  }
 }
 
 // ─── HISTORIAL ───────────────────────────────────────────────────
@@ -688,16 +721,27 @@ async function cambiarEstado(pedido, nuevoEstado) {
 }
 
 async function anular(pedido) {
-  if (!confirm(`¿Anular la venta #${pedido.id}? Se devolverá el stock.`)) return
-  try {
-    await anularPedido(pedido)
-    pedidos.value = pedidos.value.filter(p => p.id !== pedido.id)
-    await cargarResumenHoy()
-    todosLosProductos.value = await fetchProductos()
-    mostrarToast('✅ Venta anulada y stock recuperado')
-  } catch (e) {
-    mostrarToast('❌ Error al anular: ' + e.message)
-  }
+  mostrarConfirm({
+    titulo: 'Anular Venta',
+    mensaje: `¿Anular la venta #${pedido.id}? Se devolverá el stock automáticamente.`,
+    textoBoton: 'Sí, anular',
+    isDanger: true,
+    accion: async () => {
+      confirmDialog.cargando = true
+      try {
+        await anularPedido(pedido)
+        pedidos.value = pedidos.value.filter(p => p.id !== pedido.id)
+        await cargarResumenHoy()
+        todosLosProductos.value = await fetchProductos()
+        confirmDialog.isVisible = false
+        mostrarToast('✅ Venta anulada y stock recuperado')
+      } catch (e) {
+        mostrarToast('❌ Error al anular: ' + e.message)
+      } finally {
+        confirmDialog.cargando = false
+      }
+    }
+  })
 }
 
 // ─── RESUMEN DEL DÍA ─────────────────────────────────────────────

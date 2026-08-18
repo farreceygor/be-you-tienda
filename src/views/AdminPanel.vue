@@ -365,7 +365,17 @@
           </div>
         </div>
       </div>
-
+      <!-- En AdminPanel.vue, al final del template, ANTES de </main> -->
+<ConfirmDialog
+  :isVisible="confirmDialog.isVisible"
+  :titulo="confirmDialog.titulo"
+  :mensaje="confirmDialog.mensaje"
+  :textoBoton="confirmDialog.textoBoton"
+  :isDanger="confirmDialog.isDanger"
+  :cargando="confirmDialog.cargando"
+  @confirmar="confirmDialog.accion"
+  @cancelar="confirmDialog.isVisible = false"
+/>
     </main>
 
     <!-- Toast -->
@@ -393,6 +403,28 @@ import {
   eliminarBanner,
   actualizarOrdenBanners
 } from '../services/productoService'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+
+// ✅ Agregar state para el diálogo
+const confirmDialog = reactive({
+  isVisible: false,
+  titulo: '',
+  mensaje: '',
+  textoBoton: 'Eliminar',
+  isDanger: true,
+  cargando: false,
+  accion: null  // Función a ejecutar si confirma
+})
+
+// ✅ Función auxiliar para mostrar diálogo
+function mostrarConfirm(opciones) {
+  confirmDialog.titulo = opciones.titulo || 'Confirmar'
+  confirmDialog.mensaje = opciones.mensaje || '¿Estás seguro?'
+  confirmDialog.textoBoton = opciones.textoBoton || 'Confirmar'
+  confirmDialog.isDanger = opciones.isDanger ?? true
+  confirmDialog.accion = opciones.accion
+  confirmDialog.isVisible = true
+}
 
 const router = useRouter()
 const menuAbierto = ref(false)
@@ -595,22 +627,30 @@ function prepararEdicion(producto) {
 }
 
 async function eliminarProducto(producto) {
-  if (!confirm(`¿Eliminar "${producto.nombre}"?`)) return
-  cargando.value = true
-  try {
-    if (producto.imagen_url) {
-      const partes = producto.imagen_url.split('/')
-      const nombreArchivo = partes[partes.length - 1]
-      await supabase.storage.from('productos-img').remove([nombreArchivo])
+  mostrarConfirm({
+    titulo: 'Eliminar Producto',
+    mensaje: `¿Eliminar "${producto.nombre}"? Esta acción no se puede deshacer.`,
+    textoBoton: 'Sí, eliminar',
+    isDanger: true,
+    accion: async () => {
+      confirmDialog.cargando = true
+      try {
+        if (producto.imagen_url) {
+          const partes = producto.imagen_url.split('/')
+          const nombreArchivo = partes[partes.length - 1]
+          await supabase.storage.from('productos-img').remove([nombreArchivo])
+        }
+        await supabase.from('productos').delete().eq('id', producto.id)
+        await cargarInventario()
+        confirmDialog.isVisible = false
+        mostrarToast('✅ Producto eliminado')
+      } catch (error) {
+        mostrarToast('❌ Error al eliminar: ' + error.message)
+      } finally {
+        confirmDialog.cargando = false
+      }
     }
-    await supabase.from('productos').delete().eq('id', producto.id)
-    await cargarInventario()
-    mostrarToast('✅ Producto eliminado')
-  } catch (error) {
-    mostrarToast('❌ Error al eliminar: ' + error.message)
-  } finally {
-    cargando.value = false
-  }
+  })
 }
 
 function limpiarFormulario() {
@@ -695,12 +735,25 @@ function prepararEdicionCategoria(cat) {
 }
 
 async function eliminarCategoria(cat) {
-  if (!confirm(`¿Borrar "${cat.nombre}"?`)) return
-  try {
-    await supabase.from('categorias').delete().eq('id', cat.id)
-    categorias.value = await fetchCategorias()
-    mostrarToast('✅ Categoría eliminada')
-  } catch { mostrarToast('⚠️ Tiene productos asociados') }
+  mostrarConfirm({
+    titulo: 'Eliminar Categoría',
+    mensaje: `¿Eliminar "${cat.nombre}"? Los productos no se afectarán.`,
+    textoBoton: 'Sí, eliminar',
+    isDanger: true,
+    accion: async () => {
+      confirmDialog.cargando = true
+      try {
+        await supabase.from('categorias').delete().eq('id', cat.id)
+        categorias.value = await fetchCategorias()
+        confirmDialog.isVisible = false
+        mostrarToast('✅ Categoría eliminada')
+      } catch (error) {
+        mostrarToast('⚠️ Tiene productos asociados')
+      } finally {
+        confirmDialog.cargando = false
+      }
+    }
+  })
 }
 
 // Acciones de Banners
@@ -782,14 +835,25 @@ async function moverBannerOrden(idx, dir) {
 }
 
 async function eliminarBannerAdmin(banner) {
-  if (!confirm(`¿Eliminar el banner "${banner.titulo}"?`)) return
-  try {
-    await eliminarBanner(banner.id)
-    banners.value = banners.value.filter(b => b.id !== banner.id)
-    mostrarToast('✅ Banner eliminado')
-  } catch {
-    mostrarToast('❌ Error al eliminar')
-  }
+  mostrarConfirm({
+    titulo: 'Eliminar Banner',
+    mensaje: `¿Eliminar el banner "${banner.titulo}"?`,
+    textoBoton: 'Sí, eliminar',
+    isDanger: true,
+    accion: async () => {
+      confirmDialog.cargando = true
+      try {
+        await eliminarBanner(banner.id)
+        banners.value = banners.value.filter(b => b.id !== banner.id)
+        confirmDialog.isVisible = false
+        mostrarToast('✅ Banner eliminado')
+      } catch (error) {
+        mostrarToast('❌ Error al eliminar')
+      } finally {
+        confirmDialog.cargando = false
+      }
+    }
+  })
 }
 
 // ─── INICIALIZACIÓN ───────────────────────────────────────────────

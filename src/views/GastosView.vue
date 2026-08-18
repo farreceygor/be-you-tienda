@@ -312,12 +312,29 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { crearGasto, fetchGastos, eliminarGasto, actualizarGasto } from '../services/productoService'
 import { logger } from '../lib/logger'
-
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 // ─── ESTADO ──────────────────────────────────────────────────────
 const vistaActual       = ref('nuevo')
 const cargando          = ref(false)
 const cargandoHistorial = ref(false)
+const confirmDialog = reactive({
+  isVisible: false,
+  titulo: '',
+  mensaje: '',
+  textoBoton: 'Eliminar',
+  isDanger: true,
+  cargando: false,
+  accion: null
+})
 
+function mostrarConfirm(opciones) {
+  confirmDialog.titulo = opciones.titulo || 'Confirmar'
+  confirmDialog.mensaje = opciones.mensaje || '¿Estás seguro?'
+  confirmDialog.textoBoton = opciones.textoBoton || 'Confirmar'
+  confirmDialog.isDanger = opciones.isDanger ?? true
+  confirmDialog.accion = opciones.accion
+  confirmDialog.isVisible = true
+}
 // ─── ITEM MANUAL ─────────────────────────────────────────────────
 const itemNuevo = reactive({ nombre: '', cantidad: 1, precio_costo: 0 })
 
@@ -530,15 +547,26 @@ function toggleGasto(id) {
 }
 
 async function anularGasto(gasto) {
-  if (!confirm(`¿Eliminar el gasto #${gasto.id}?`)) return
-  try {
-    await eliminarGasto(gasto.id)
-    gastos.value = gastos.value.filter(g => g.id !== gasto.id)
-    await cargarResumen()
-    mostrarToast('✅ Gasto eliminado')
-  } catch (e) {
-    mostrarToast('❌ Error al eliminar: ' + e.message)
-  }
+  mostrarConfirm({
+    titulo: 'Eliminar Gasto',
+    mensaje: `¿Eliminar el gasto #${gasto.id} por $${Number(gasto.total).toLocaleString('es-AR')}?`,
+    textoBoton: 'Sí, eliminar',
+    isDanger: true,
+    accion: async () => {
+      confirmDialog.cargando = true
+      try {
+        await eliminarGasto(gasto.id)
+        gastos.value = gastos.value.filter(g => g.id !== gasto.id)
+        await cargarResumen()
+        confirmDialog.isVisible = false
+        mostrarToast('✅ Gasto eliminado')
+      } catch (e) {
+        mostrarToast('❌ Error al eliminar: ' + e.message)
+      } finally {
+        confirmDialog.cargando = false
+      }
+    }
+  })
 }
 
 // ─── RESUMEN ─────────────────────────────────────────────────────
