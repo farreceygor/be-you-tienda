@@ -1,368 +1,451 @@
 <template>
-  <div class="cobr">
+  <div class="cobr-pos min-h-screen w-full relative overflow-x-hidden text-white">
 
-    <!-- HEADER -->
-     <button class="cobr__back" @click="$router.push({ name: 'admin' })">
-      ← Volver al panel
-    </button>
-    <div class="cobr__header">
-      <div>
-        <h1 class="cobr__title">Cobranza</h1>
-        <p class="cobr__sub">Registrá ventas y consultá el historial</p>
-      </div>
-      <div class="cobr__tabs">
+    <!-- ══════════════════════════════════════
+         FONDO AMBIENTAL ANIMADO (mesh gradient)
+    ══════════════════════════════════════ -->
+    <div class="pos-bg" aria-hidden="true"></div>
+    <div class="pos-bg-grain" aria-hidden="true"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
+
+      <!-- ══════════════════════════════════════
+           TOP BAR
+      ══════════════════════════════════════ -->
+      <div class="flex items-center justify-between gap-3 flex-wrap mb-6 animate-fade-up">
         <button
-          class="cobr__tab"
-          :class="{ 'cobr__tab--active': vistaActual === 'nueva' }"
-          @click="vistaActual = 'nueva'"
-        >+ Nueva venta</button>
-        <button
-          class="cobr__tab"
-          :class="{ 'cobr__tab--active': vistaActual === 'historial' }"
-          @click="vistaActual = 'historial'; cargarHistorial()"
-        >Historial</button>
-      </div>
-    </div>
+          class="back-btn"
+          @click="$router.push({ name: 'admin' })"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Volver al panel
+        </button>
 
-    <!-- RESUMEN DEL DÍA -->
-    <div class="resumen">
-      <div class="resumen__card">
-        <span class="resumen__label">Cobrado hoy</span>
-        <span class="resumen__value resumen__value--green">${{ resumenHoy.cobrado.toLocaleString('es-AR') }}</span>
-      </div>
-      <div class="resumen__card">
-        <span class="resumen__label">Pendiente hoy</span>
-        <span class="resumen__value resumen__value--orange">${{ resumenHoy.pendiente.toLocaleString('es-AR') }}</span>
-      </div>
-      <div class="resumen__card">
-        <span class="resumen__label">Ventas hoy</span>
-        <span class="resumen__value">{{ resumenHoy.cantidad }}</span>
-      </div>
-      <div class="resumen__card">
-        <span class="resumen__label">Total del día</span>
-        <span class="resumen__value resumen__value--rose">${{ resumenHoy.total.toLocaleString('es-AR') }}</span>
-      </div>
-    </div>
-
-    <!-- ═══ NUEVA VENTA ═══ -->
-    <div v-if="vistaActual === 'nueva'" class="panel">
-      <div class="panel__section">
-    <h2 class="panel__title">1. Datos del cliente y pago</h2>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Nombre del cliente</label>
-        <input v-model="datosPedido.cliente" type="text" placeholder="Opcional" />
-      </div>
-      <div class="form-group">
-        <label>Teléfono</label>
-        <input v-model="datosPedido.telefono" type="text" placeholder="Opcional" />
-      </div>
-      <div class="form-group">
-        <label>Método de pago</label>
-        <select v-model="datosPedido.metodo_pago">
-          <option value="efectivo">💵 Efectivo</option>
-          <option value="transferencia">🏦 Transferencia</option>
-          <option value="mercado_pago">📱 Mercado Pago</option>
-          <option value="debito">💳 Débito</option>
-          <option value="credito">💳 Crédito</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Estado</label>
-        <select v-model="datosPedido.estado">
-          <option value="pagado">✅ Pagado</option>
-          <option value="pendiente">⏳ Pendiente</option>
-          <option value="señado">💰 Señado</option>
-        </select>
-      </div>
-      <div class="form-group form-group--full">
-        <label>Notas</label>
-        <input v-model="datosPedido.notas" type="text" placeholder="Observaciones adicionales..." />
-      </div>
-    </div>
-  </div>
-
-      <!-- Buscador de productos -->
-      <div class="panel__section">
-        <h2 class="panel__title">2. Agregá productos</h2>
-        <div class="prod-search">
-          <div class="prod-search__input-wrap">
-            <span class="prod-search__icon">🔍</span>
-            <input
-  v-model="busquedaProd"
-  type="text"
-  class="prod-search__input"
-  placeholder="Buscá por nombre del producto..."
-  @input="filtrarProductos"
-  @focus="searchAbierto = true"
-  @blur="cerrarSearchConRetraso"
-/>
-          </div>
-
-          <!-- Dropdown de resultados -->
-          <div v-if="searchAbierto && productosBuscados.length > 0" class="prod-search__dropdown">
-            <div
-              v-for="p in productosBuscados"
-              :key="p.id"
-              class="prod-search__item"
-              :class="{ 'prod-search__item--agotado': p.stock <= 0 }"
-              @mousedown.prevent="seleccionarProducto(p)"
-            >
-              <img :src="p.imagen_url" :alt="p.nombre" class="prod-search__img" />
-              <div class="prod-search__info">
-                <span class="prod-search__nombre">{{ p.nombre }}</span>
-                <span class="prod-search__precio">${{ p.precio.toLocaleString('es-AR') }}</span>
-              </div>
-              <span class="prod-search__stock" :class="{ 'prod-search__stock--bajo': p.stock <= 3 }">
-                {{ p.stock > 0 ? `Stock: ${p.stock}` : 'Sin stock' }}
-              </span>
-            </div>
-          </div>
-
-          <p v-if="searchAbierto && busquedaProd && productosBuscados.length === 0" class="prod-search__empty">
-            No se encontraron productos
-          </p>
+        <!-- Segmented control -->
+        <div class="segmented">
+          <button
+            class="segmented__btn"
+            :class="{ 'segmented__btn--active': vistaActual === 'nueva' }"
+            @click="vistaActual = 'nueva'"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a.5.5 0 0 1 .5.5v4h4a.5.5 0 0 1 0 1h-4v4a.5.5 0 0 1-1 0v-4h-4a.5.5 0 0 1 0-1h4v-4a.5.5 0 0 1 .5-.5"/></svg>
+            Nueva venta
+          </button>
+          <button
+            class="segmented__btn"
+            :class="{ 'segmented__btn--active': vistaActual === 'historial' }"
+            @click="vistaActual = 'historial'; cargarHistorial()"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a.5.5 0 0 1 .5.5v4.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7.5 8V4a.5.5 0 0 1 .5-.5"/><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1M2 8a6 6 0 1 1 12 0A6 6 0 0 1 2 8"/></svg>
+            Historial
+          </button>
         </div>
       </div>
 
-      <!-- Items de la venta actual -->
-      <div class="panel__section">
-        <div v-if="itemsVenta.length === 0" class="venta-empty">
-          <span>🛒</span>
-          <p>Buscá y agregá productos para armar la venta</p>
+      <div class="mb-7 animate-fade-up" style="animation-delay:.05s">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Cobranza</h1>
+        <p class="text-sm text-white/45 mt-1">Terminal punto de venta · registrá ventas y consultá el historial</p>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           KPIs
+      ══════════════════════════════════════ -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8 animate-fade-up" style="animation-delay:.1s">
+        <div v-for="(kpi, i) in kpis" :key="i" class="kpi-card" :style="{ '--accent': kpi.color }">
+          <div class="kpi-card__icon" v-html="kpi.icon"></div>
+          <span class="kpi-card__label">{{ kpi.label }}</span>
+          <span class="kpi-card__value">{{ kpi.value }}</span>
         </div>
-
-        <div v-else>
-  <div v-for="(item, idx) in itemsVenta" :key="idx" class="venta-item">
-    <img :src="item.imagen_url" :alt="item.nombre" class="venta-item__img" />
-    <div class="venta-item__info">
-      <span class="venta-item__nombre">{{ item.nombre }}</span>
-      <span class="venta-item__precio">${{ item.precio_unit.toLocaleString('es-AR') }} c/u</span>
-
-      <!-- Descuento por item -->
-      <div class="item-descuento">
-        <select
-          v-model="item.descuento_tipo"
-          class="item-descuento__select"
-          @change="onDescuentoItemChange(item)"
-        >
-          <option :value="null">Sin descuento</option>
-          <option value="porcentaje">% Porcentaje</option>
-          <option value="monto">$ Monto fijo</option>
-        </select>
-        <input
-          v-if="item.descuento_tipo"
-          v-model.number="item.descuento_valor"
-          type="number"
-          min="0"
-          class="item-descuento__input"
-          :placeholder="item.descuento_tipo === 'porcentaje' ? '10' : '500'"
-          @input="onDescuentoItemChange(item)"
-        />
-        <span v-if="item.descuento_monto > 0" class="item-descuento__badge">
-          -${{ item.descuento_monto.toLocaleString('es-AR') }}
-        </span>
-      </div>
-    </div>
-
-    <div class="venta-item__qty">
-      <button
-  class="qty-btn"
-  :disabled="item.cantidad >= item.stock" 
-  @click="cambiarCantidadItem(idx, 1)"
->+</button>
-      <span class="qty-num">{{ item.cantidad }}</span>
-      <button class="qty-btn" :disabled="item.cantidad >= item.stock" @click="cambiarCantidadItem(idx, 1)">+</button>
-    </div>
-    <span class="venta-item__subtotal">${{ item.subtotal.toLocaleString('es-AR') }}</span>
-    <button class="venta-item__remove" @click="quitarItem(idx)">✕</button>
-  </div>
-
-<div class="descuento-general">
-            <span class="descuento-general__label">💰 Descuento general</span>
-            <div class="descuento-general__controles">
-              <select
-                v-model="descuentoGeneral.tipo"
-                class="item-descuento__select"
-                @change="onDescuentoGeneralChange"
-              >
-                <option :value="null">Sin descuento</option>
-                <option value="porcentaje">% Porcentaje</option>
-                <option value="monto">$ Monto fijo</option>
-              </select>
-              <input
-                v-if="descuentoGeneral.tipo"
-                v-model.number="descuentoGeneral.valor"
-                type="number"
-                min="0"
-                max="999999"
-                class="item-descuento__input"
-                :placeholder="descuentoGeneral.tipo === 'porcentaje' ? '10' : '1000'"
-                @input="validarDescuentoGeneral"
-              />
-            </div>
-          </div>
-
-          <!-- ✅ CARRITO FLOTANTE - Único resumen de totales -->
-          <div class="carrito-flotante">
-            <div class="carrito-flotante__row">
-  <span class="carrito-flotante__label">📦 Unidades:</span>
-  <span class="carrito-flotante__value">{{ cantidadTotalProductos }}</span>
-</div>
-
-            <div class="carrito-flotante__row">
-              <span class="carrito-flotante__label">Subtotal:</span>
-              <span class="carrito-flotante__value">${{ subtotalItems.toLocaleString('es-AR') }}</span>
-            </div>
-            
-            <div v-if="itemsVenta.some(i => i.descuento_monto > 0)" class="carrito-flotante__row carrito-flotante__row--descuento">
-              <span class="carrito-flotante__label">🏷️ Desc. items:</span>
-              <span class="carrito-flotante__value">-${{ itemsVenta.reduce((a,i) => a + i.descuento_monto, 0).toLocaleString('es-AR') }}</span>
-            </div>
-
-            <div v-if="descuentoGeneralMonto > 0" class="carrito-flotante__row carrito-flotante__row--descuento">
-              <span class="carrito-flotante__label">💰 Desc. gral:</span>
-              <span class="carrito-flotante__value">-${{ descuentoGeneralMonto.toLocaleString('es-AR') }}</span>
-            </div>
-            
-            <div class="carrito-flotante__row carrito-flotante__row--total">
-              <span class="carrito-flotante__label">💳 TOTAL:</span>
-              <span class="carrito-flotante__value--total">${{ totalVenta.toLocaleString('es-AR') }}</span>
-            </div>
-          </div>
-</div>
       </div>
 
-      <div v-if="itemsVenta.length > 0" class="panel__section">
-    <button class="btn-confirmar" :disabled="cargando" @click="confirmarVenta">
-      {{ cargando ? 'Guardando...' : '✓ Confirmar venta' }}
-    </button>
-      </div>
-    </div>
+      <!-- ══════════════════════════════════════
+           NUEVA VENTA
+      ══════════════════════════════════════ -->
+      <div v-if="vistaActual === 'nueva'" class="grid lg:grid-cols-[1fr_380px] gap-5 items-start">
 
-    <!-- ═══ HISTORIAL ═══ -->
-    <div v-if="vistaActual === 'historial'" class="panel">
+        <!-- ── COLUMNA IZQUIERDA ── -->
+        <div class="flex flex-col gap-5 animate-fade-up" style="animation-delay:.15s">
 
-      <!-- Filtros -->
-      <div class="historial-filtros">
-        <select v-model="filtroEstado" class="filtro-select">
-          <option value="">Todos los estados</option>
-          <option value="pagado">Pagado</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="señado">Señado</option>
-        </select>
-        <select v-model="filtroMetodo" class="filtro-select">
-          <option value="">Todos los métodos</option>
-          <option value="efectivo">Efectivo</option>
-          <option value="transferencia">Transferencia</option>
-          <option value="mercado_pago">Mercado Pago</option>
-          <option value="debito">Débito</option>
-          <option value="credito">Crédito</option>
-        </select>
-      </div>
-
-      <div v-if="cargandoHistorial" class="estado-carga">
-        <div class="spinner"></div>
-        <p>Cargando historial...</p>
-      </div>
-
-      <div v-else-if="pedidosFiltrados.length === 0" class="venta-empty">
-        <span>📋</span>
-        <p>No hay ventas registradas</p>
-      </div>
-
-      <div v-else class="historial">
-        <div
-          v-for="pedido in pedidosFiltrados"
-          :key="pedido.id"
-          class="historial-item"
-          :class="{ 'historial-item--expandido': pedidoExpandido === pedido.id }"
-        >
-          <!-- Cabecera del pedido -->
-          <div class="historial-item__head" @click="togglePedido(pedido.id)">
-            <div class="historial-item__info">
-              <span class="historial-item__id">#{{ pedido.id }}</span>
-              <span class="historial-item__fecha">{{ formatFecha(pedido.created_at) }}</span>
-              <span v-if="pedido.cliente" class="historial-item__cliente">{{ pedido.cliente }}</span>
-            </div>
-            <div class="historial-item__right">
-              <span class="historial-item__total">${{ pedido.total.toLocaleString('es-AR') }}</span>
-              <span class="estado-badge" :class="`estado-badge--${pedido.estado}`">
-                {{ pedido.estado }}
-              </span>
-              <span class="historial-item__arrow">{{ pedidoExpandido === pedido.id ? '▲' : '▼' }}</span>
-            </div>
-          </div>
-
-          <!-- Detalle expandible -->
-          <div v-if="pedidoExpandido === pedido.id" class="historial-item__detalle">
-            <div class="detalle-items">
-              <div v-for="item in pedido.pedido_items" :key="item.id" class="detalle-item">
-                <span class="detalle-item__nombre">{{ item.nombre }}</span>
-                <span class="detalle-item__qty">x{{ item.cantidad }}</span>
-                <span class="detalle-item__precio">${{ item.precio_unit.toLocaleString('es-AR') }}</span>
-                <span class="detalle-item__sub">${{ item.subtotal.toLocaleString('es-AR') }}</span>
+          <!-- Datos del cliente -->
+          <section class="glass-panel">
+            <h2 class="panel-title">
+              <span class="panel-title__num">1</span> Cliente y método de pago
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="field">
+                <label>Nombre del cliente</label>
+                <input v-model="datosPedido.cliente" type="text" placeholder="Opcional" class="pos-input" />
               </div>
-            </div>
-            <div class="detalle-footer">
-              <div class="detalle-meta">
-                <span>💳 {{ formatMetodo(pedido.metodo_pago) }}</span>
-                <span v-if="pedido.notas">📝 {{ pedido.notas }}</span>
+              <div class="field">
+                <label>Teléfono</label>
+                <input v-model="datosPedido.telefono" type="text" placeholder="Opcional" class="pos-input" />
               </div>
-              <div class="detalle-acciones">
-                <!-- Cambiar método de pago -->
-                <select
-                  :value="pedido.metodo_pago"
-                  class="metodo-select"
-                  @change="cambiarMetodoPago(pedido, $event.target.value)"
-                >
+              <div class="field">
+                <label>Método de pago</label>
+                <select v-model="datosPedido.metodo_pago" class="pos-input pos-select">
                   <option value="efectivo">💵 Efectivo</option>
                   <option value="transferencia">🏦 Transferencia</option>
                   <option value="mercado_pago">📱 Mercado Pago</option>
                   <option value="debito">💳 Débito</option>
                   <option value="credito">💳 Crédito</option>
                 </select>
-                <!-- Cambiar estado -->
-                <select
-                  :value="pedido.estado"
-                  class="estado-select"
-                  @change="cambiarEstado(pedido, $event.target.value)"
-                >
+              </div>
+              <div class="field">
+                <label>Estado</label>
+                <select v-model="datosPedido.estado" class="pos-input pos-select">
                   <option value="pagado">✅ Pagado</option>
                   <option value="pendiente">⏳ Pendiente</option>
                   <option value="señado">💰 Señado</option>
                 </select>
-
-                <button class="btn-anular" @click="anular(pedido)">
-                  🗑️ Anular
-                </button>
+              </div>
+              <div class="field sm:col-span-2">
+                <label>Notas</label>
+                <input v-model="datosPedido.notas" type="text" placeholder="Observaciones adicionales..." class="pos-input" />
               </div>
             </div>
+
+            <!-- Badge visual del método elegido -->
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-[11px] text-white/40 uppercase tracking-wide">Pago seleccionado:</span>
+              <span class="metodo-badge" :class="`metodo-badge--${datosPedido.metodo_pago}`">
+                {{ formatMetodo(datosPedido.metodo_pago) }}
+              </span>
+            </div>
+          </section>
+
+          <!-- Buscador de productos -->
+          <section class="glass-panel">
+            <h2 class="panel-title">
+              <span class="panel-title__num">2</span> Agregá productos
+            </h2>
+
+            <div class="prod-search">
+              <div class="prod-search__input-wrap">
+                <svg class="prod-search__icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <input
+                  ref="searchInputRef"
+                  v-model="busquedaProd"
+                  type="text"
+                  class="prod-search__input"
+                  placeholder="Buscá por nombre del producto..."
+                  @input="filtrarProductos"
+                  @focus="searchAbierto = true"
+                  @blur="cerrarSearchConRetraso"
+                />
+              </div>
+
+              <!-- Dropdown de resultados -->
+              <div v-if="searchAbierto && productosBuscados.length > 0" class="prod-search__dropdown">
+                <div
+                  v-for="p in productosBuscados"
+                  :key="p.id"
+                  class="prod-search__item group"
+                  :class="{ 'prod-search__item--agotado': p.stock <= 0 }"
+                  @mousedown.prevent="seleccionarProducto(p)"
+                >
+                  <!-- Thumbnail con preview hover -->
+                  <div class="relative">
+                    <img :src="p.imagen_url" :alt="p.nombre" class="prod-search__img" />
+                    <div class="img-preview group-hover:opacity-100 group-hover:scale-100">
+                      <img :src="p.imagen_url" :alt="p.nombre" />
+                    </div>
+                  </div>
+                  <div class="prod-search__info">
+                    <span class="prod-search__nombre">{{ p.nombre }}</span>
+                    <span class="prod-search__precio">${{ p.precio.toLocaleString('es-AR') }}</span>
+                  </div>
+                  <span class="stock-chip" :class="{ 'stock-chip--bajo': p.stock <= 3 && p.stock > 0, 'stock-chip--off': p.stock <= 0 }">
+                    {{ p.stock > 0 ? `Stock: ${p.stock}` : 'Sin stock' }}
+                  </span>
+                </div>
+              </div>
+
+              <p v-if="searchAbierto && busquedaProd && productosBuscados.length === 0" class="prod-search__empty">
+                No se encontraron productos
+              </p>
+            </div>
+
+            <!-- Items de la venta actual -->
+            <div class="mt-4">
+              <div v-if="itemsVenta.length === 0" class="venta-empty">
+                <span>🛒</span>
+                <p>Buscá y agregá productos para armar la venta</p>
+              </div>
+
+              <transition-group v-else name="item-list" tag="div" class="flex flex-col gap-2">
+                <div v-for="(item, idx) in itemsVenta" :key="idx" class="venta-item">
+                  <!-- Imagen con click-to-zoom -->
+                  <button class="venta-item__img-btn" @click="abrirZoom(item.imagen_url, item.nombre)" title="Ver imagen">
+                    <img :src="item.imagen_url" :alt="item.nombre" class="venta-item__img" />
+                    <span class="venta-item__zoom-hint">🔍</span>
+                  </button>
+
+                  <div class="venta-item__info">
+                    <span class="venta-item__nombre">{{ item.nombre }}</span>
+                    <span class="venta-item__precio">${{ item.precio_unit.toLocaleString('es-AR') }} c/u</span>
+
+                    <!-- Descuento por item -->
+                    <div class="item-descuento">
+                      <select
+                        v-model="item.descuento_tipo"
+                        class="item-descuento__select"
+                        @change="onDescuentoItemChange(item)"
+                      >
+                        <option :value="null">Sin descuento</option>
+                        <option value="porcentaje">% Porcentaje</option>
+                        <option value="monto">$ Monto fijo</option>
+                      </select>
+                      <input
+                        v-if="item.descuento_tipo"
+                        v-model.number="item.descuento_valor"
+                        type="number"
+                        min="0"
+                        class="item-descuento__input"
+                        :placeholder="item.descuento_tipo === 'porcentaje' ? '10' : '500'"
+                        @input="onDescuentoItemChange(item)"
+                      />
+                      <span v-if="item.descuento_monto > 0" class="item-descuento__badge">
+                        -${{ item.descuento_monto.toLocaleString('es-AR') }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="venta-item__qty">
+                    <button
+                      class="qty-btn"
+                      :disabled="item.cantidad <= 1"
+                      @click="cambiarCantidadItem(idx, -1)"
+                    >−</button>
+                    <span class="qty-num">{{ item.cantidad }}</span>
+                    <button
+                      class="qty-btn"
+                      :disabled="item.cantidad >= item.stock"
+                      @click="cambiarCantidadItem(idx, 1)"
+                    >+</button>
+                  </div>
+
+                  <span class="venta-item__subtotal">${{ item.subtotal.toLocaleString('es-AR') }}</span>
+                  <button class="venta-item__remove" @click="quitarItem(idx)" title="Quitar">✕</button>
+                </div>
+              </transition-group>
+            </div>
+          </section>
+        </div>
+
+        <!-- ── COLUMNA DERECHA: RESUMEN / COBRO ── -->
+        <div class="lg:sticky lg:top-6 animate-fade-up" style="animation-delay:.2s">
+          <section class="glass-panel glass-panel--accent">
+            <h2 class="panel-title">
+              <span class="panel-title__num">💳</span> Resumen de cobro
+            </h2>
+
+            <!-- Descuento general -->
+            <div class="descuento-general">
+              <span class="descuento-general__label">Descuento general</span>
+              <div class="descuento-general__controles">
+                <select
+                  v-model="descuentoGeneral.tipo"
+                  class="item-descuento__select"
+                  @change="onDescuentoGeneralChange"
+                >
+                  <option :value="null">Sin descuento</option>
+                  <option value="porcentaje">% Porcentaje</option>
+                  <option value="monto">$ Monto fijo</option>
+                </select>
+                <input
+                  v-if="descuentoGeneral.tipo"
+                  v-model.number="descuentoGeneral.valor"
+                  type="number"
+                  min="0"
+                  max="999999"
+                  class="item-descuento__input"
+                  :placeholder="descuentoGeneral.tipo === 'porcentaje' ? '10' : '1000'"
+                  @input="validarDescuentoGeneral"
+                />
+              </div>
+            </div>
+
+            <div class="totales">
+              <div class="totales__row">
+                <span>📦 Unidades</span>
+                <strong>{{ cantidadTotalProductos }}</strong>
+              </div>
+              <div class="totales__row">
+                <span>Subtotal</span>
+                <strong>${{ subtotalItems.toLocaleString('es-AR') }}</strong>
+              </div>
+              <div v-if="itemsVenta.some(i => i.descuento_monto > 0)" class="totales__row totales__row--desc">
+                <span>🏷️ Desc. ítems</span>
+                <strong>-${{ itemsVenta.reduce((a,i) => a + i.descuento_monto, 0).toLocaleString('es-AR') }}</strong>
+              </div>
+              <div v-if="descuentoGeneralMonto > 0" class="totales__row totales__row--desc">
+                <span>💰 Desc. general</span>
+                <strong>-${{ descuentoGeneralMonto.toLocaleString('es-AR') }}</strong>
+              </div>
+            </div>
+
+            <div class="total-final">
+              <span>TOTAL</span>
+              <strong>${{ totalVenta.toLocaleString('es-AR') }}</strong>
+            </div>
+
+            <button
+              v-if="itemsVenta.length > 0"
+              class="btn-confirmar"
+              :disabled="cargando"
+              @click="confirmarVenta"
+            >
+              <span v-if="!cargando">✓ Confirmar venta</span>
+              <span v-else class="flex items-center justify-center gap-2">
+                <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
+                  <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                Guardando...
+              </span>
+            </button>
+            <p v-else class="text-center text-xs text-white/35 mt-2">Agregá productos para habilitar el cobro</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════
+           HISTORIAL
+      ══════════════════════════════════════ -->
+      <div v-if="vistaActual === 'historial'" class="glass-panel animate-fade-up" style="animation-delay:.15s">
+
+        <div class="historial-filtros">
+          <select v-model="filtroEstado" class="pos-input pos-select">
+            <option value="">Todos los estados</option>
+            <option value="pagado">Pagado</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="señado">Señado</option>
+          </select>
+          <select v-model="filtroMetodo" class="pos-input pos-select">
+            <option value="">Todos los métodos</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="mercado_pago">Mercado Pago</option>
+            <option value="debito">Débito</option>
+            <option value="credito">Crédito</option>
+          </select>
+        </div>
+
+        <div v-if="cargandoHistorial" class="estado-carga">
+          <div class="spinner"></div>
+          <p>Cargando historial...</p>
+        </div>
+
+        <div v-else-if="pedidosFiltrados.length === 0" class="venta-empty">
+          <span>📋</span>
+          <p>No hay ventas registradas</p>
+        </div>
+
+        <div v-else class="flex flex-col gap-2 mt-3">
+          <div
+            v-for="pedido in pedidosFiltrados"
+            :key="pedido.id"
+            class="historial-item"
+            :class="{ 'historial-item--expandido': pedidoExpandido === pedido.id }"
+          >
+            <div class="historial-item__head" @click="togglePedido(pedido.id)">
+              <div class="historial-item__info">
+                <span class="historial-item__id">#{{ pedido.id }}</span>
+                <span class="historial-item__fecha">{{ formatFecha(pedido.created_at) }}</span>
+                <span v-if="pedido.cliente" class="historial-item__cliente">{{ pedido.cliente }}</span>
+              </div>
+              <div class="historial-item__right">
+                <span class="historial-item__total">${{ pedido.total.toLocaleString('es-AR') }}</span>
+                <span class="estado-badge" :class="`estado-badge--${pedido.estado}`">{{ pedido.estado }}</span>
+                <span class="historial-item__arrow">{{ pedidoExpandido === pedido.id ? '▲' : '▼' }}</span>
+              </div>
+            </div>
+
+            <transition name="expand">
+              <div v-if="pedidoExpandido === pedido.id" class="historial-item__detalle">
+                <div class="detalle-items">
+                  <div v-for="item in pedido.pedido_items" :key="item.id" class="detalle-item">
+                    <span class="detalle-item__nombre">{{ item.nombre }}</span>
+                    <span class="detalle-item__qty">x{{ item.cantidad }}</span>
+                    <span class="detalle-item__precio">${{ item.precio_unit.toLocaleString('es-AR') }}</span>
+                    <span class="detalle-item__sub">${{ item.subtotal.toLocaleString('es-AR') }}</span>
+                  </div>
+                </div>
+                <div class="detalle-footer">
+                  <div class="detalle-meta">
+                    <span>💳 {{ formatMetodo(pedido.metodo_pago) }}</span>
+                    <span v-if="pedido.notas">📝 {{ pedido.notas }}</span>
+                  </div>
+                  <div class="detalle-acciones">
+                    <select
+                      :value="pedido.metodo_pago"
+                      class="metodo-select"
+                      @change="cambiarMetodoPago(pedido, $event.target.value)"
+                    >
+                      <option value="efectivo">💵 Efectivo</option>
+                      <option value="transferencia">🏦 Transferencia</option>
+                      <option value="mercado_pago">📱 Mercado Pago</option>
+                      <option value="debito">💳 Débito</option>
+                      <option value="credito">💳 Crédito</option>
+                    </select>
+                    <select
+                      :value="pedido.estado"
+                      class="estado-select"
+                      @change="cambiarEstado(pedido, $event.target.value)"
+                    >
+                      <option value="pagado">✅ Pagado</option>
+                      <option value="pendiente">⏳ Pendiente</option>
+                      <option value="señado">💰 Señado</option>
+                    </select>
+                    <button class="btn-anular" @click="anular(pedido)">🗑️ Anular</button>
+                  </div>
+                </div>
+              </div>
+            </transition>
           </div>
         </div>
       </div>
+
     </div>
 
-    <!-- Toast -->
+    <!-- ══════════════════════════════════════
+         TOAST
+    ══════════════════════════════════════ -->
     <transition name="toast">
       <div v-if="toast.show" class="toast">{{ toast.msg }}</div>
     </transition>
 
+    <!-- ══════════════════════════════════════
+         LIGHTBOX / ZOOM DE IMAGEN
+    ══════════════════════════════════════ -->
+    <transition name="fade">
+      <div v-if="imagenZoom" class="zoom-overlay" @click="cerrarZoom">
+        <button class="zoom-close" @click="cerrarZoom">✕</button>
+        <img :src="imagenZoom.src" :alt="imagenZoom.alt" class="zoom-img" @click.stop />
+        <span class="zoom-caption">{{ imagenZoom.alt }}</span>
+      </div>
+    </transition>
+
+    <ConfirmDialog
+      :isVisible="confirmDialog.isVisible"
+      :titulo="confirmDialog.titulo"
+      :mensaje="confirmDialog.mensaje"
+      :textoBoton="confirmDialog.textoBoton"
+      :isDanger="confirmDialog.isDanger"
+      :cargando="confirmDialog.cargando"
+      @confirmar="confirmDialog.accion"
+      @cancelar="confirmDialog.isVisible = false"
+    />
   </div>
-  <ConfirmDialog
-  :isVisible="confirmDialog.isVisible"
-  :titulo="confirmDialog.titulo"
-  :mensaje="confirmDialog.mensaje"
-  :textoBoton="confirmDialog.textoBoton"
-  :isDanger="confirmDialog.isDanger"
-  :cargando="confirmDialog.cargando"
-  @confirmar="confirmDialog.accion"
-  @cancelar="confirmDialog.isVisible = false"
-/>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, nextTick } from 'vue'
 import { supabase } from '../lib/supabaseClient'
 import {
   fetchProductos,
@@ -380,6 +463,7 @@ import { useCarrito } from '../composables/useCarrito'
 import { AppError } from '../lib/AppError'
 import { logger } from '../lib/logger'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+
 // ─── ESTADO GENERAL ──────────────────────────────────────────────
 const vistaActual = ref('nueva')
 const cargando = ref(false)
@@ -406,6 +490,7 @@ function mostrarConfirm(opciones) {
 const todosLosProductos = ref([])
 const busquedaProd = ref('')
 const searchAbierto = ref(false)
+const searchInputRef = ref(null) // ← NUEVO: para auto-foco
 
 // ─── CARRITO ───────────────────────────────────────────────────
 const {
@@ -430,17 +515,15 @@ function cerrarSearchConRetraso() {
   setTimeout(() => { searchAbierto.value = false }, 200)
 }
 
-// ✅ DESPUÉS - Si el producto tiene variantes, abrir selector
+// ✅ Si el producto tiene variantes, abrir selector
 function seleccionarProducto(p) {
   if (p.stock <= 0) {
     mostrarToast('⚠️ Este producto no tiene stock')
     return
   }
 
-  // ✅ Si tiene variantes, OBLIGAR a elegir una
   if (p.variantes && p.variantes.trim() !== '') {
     mostrarToast('🌸 Este producto tiene opciones. Elige una desde el catálogo')
-    // Podríamos abrir modal aquí en futuro
     return
   }
 
@@ -459,7 +542,7 @@ function seleccionarProducto(p) {
       cantidad: 1,
       subtotal: p.precio,
       stock: p.stock,
-      variante: null,  // ✅ Agregar variante
+      variante: null,
       descuento_tipo: null,
       descuento_valor: 0,
       descuento_monto: 0
@@ -472,41 +555,31 @@ function seleccionarProducto(p) {
 
 // ─── DESCUENTOS ──────────────────────────────────────────────────
 function validarDescuentoGeneral() {
-  // Si no hay tipo seleccionado, no validar
   if (!descuentoGeneral.tipo) {
     descuentoGeneral.valor = 0
     return
   }
-
-  // ✅ Validación 1: No permitir negativos
   if (descuentoGeneral.valor < 0) {
     descuentoGeneral.valor = 0
     mostrarToast('⚠️ El descuento no puede ser negativo')
     return
   }
-
-  // ✅ Validación 2: Para porcentajes, max 100%
   if (descuentoGeneral.tipo === 'porcentaje' && descuentoGeneral.valor > 100) {
     descuentoGeneral.valor = 100
     mostrarToast('⚠️ El descuento no puede superar 100%')
     return
   }
-
-  // ✅ Validación 3: Para montos, no superar el subtotal
   if (descuentoGeneral.tipo === 'monto' && descuentoGeneral.valor > subtotalItems.value) {
     descuentoGeneral.valor = subtotalItems.value
     mostrarToast(`⚠️ Descuento limitado a $${subtotalItems.value.toLocaleString('es-AR')}`)
     return
   }
-
-  // Si todo está bien, no hay error
   logger.debug('Descuento validado', {
     tipo: descuentoGeneral.tipo,
     valor: descuentoGeneral.valor
   })
 }
 
-// Recalcula el subtotal de un item aplicando su descuento
 function recalcularItem(item) {
   const bruto = item.precio_unit * item.cantidad
 
@@ -526,42 +599,32 @@ function onDescuentoItemChange(item) {
   recalcularItem(item)
 }
 
-// Descuento general sobre el total
 const descuentoGeneral = reactive({
-  tipo: null, // 'porcentaje' | 'monto' | null
+  tipo: null,
   valor: 0,
   monto: 0
 })
 
-// Subtotal antes de descuento general (suma de subtotales de items)
 const subtotalItems = computed(() =>
   itemsVenta.value.reduce((acc, i) => acc + i.subtotal, 0)
 )
 
-// Monto del descuento general calculado
 const descuentoGeneralMonto = computed(() => {
-  // ✅ Si no hay tipo o valor es 0 o negativo, retornar 0
   if (!descuentoGeneral.tipo || descuentoGeneral.valor <= 0) {
     return 0
   }
-
-  // ✅ Para porcentajes: asegurar que esté entre 0-100
   if (descuentoGeneral.tipo === 'porcentaje') {
     const porcentajeValido = Math.max(0, Math.min(100, descuentoGeneral.valor))
     const monto = Math.round(subtotalItems.value * (porcentajeValido / 100))
-    return Math.max(0, monto)  // ✅ El resultado también debe ser >= 0
+    return Math.max(0, monto)
   }
-
-  // ✅ Para montos: no superar el subtotal
   if (descuentoGeneral.tipo === 'monto') {
     const montoValido = Math.max(0, descuentoGeneral.valor)
     return Math.min(montoValido, subtotalItems.value)
   }
-
   return 0
 })
 
-// Total final de la venta (Con descuento general aplicado)
 const totalVenta = computed(() =>
   Math.max(0, subtotalItems.value - descuentoGeneralMonto.value)
 )
@@ -605,7 +668,6 @@ async function confirmarVenta() {
     return
   }
 
-  // ✅ VALIDACIÓN 1: Verificar stock ANTES (primera vez)
   let validacion = await validarStockVenta(itemsVenta.value)
   if (!validacion.valido) {
     mostrarToast(`⚠️ ${validacion.error}`)
@@ -614,7 +676,6 @@ async function confirmarVenta() {
 
   cargando.value = true
   try {
-    // ✅ Validaciones de descuentos (ya existen)
     if (descuentoGeneral.valor < 0) {
       throw new Error('El descuento no puede ser negativo')
     }
@@ -625,12 +686,10 @@ async function confirmarVenta() {
       throw new Error('El descuento no puede superar el subtotal')
     }
 
-    // ✅ VALIDACIÓN 2: Verificar stock de NUEVO (por si cambió)
     validacion = await validarStockVenta(itemsVenta.value)
     if (!validacion.valido) {
       mostrarToast(`⚠️ ${validacion.error}`)
       cargando.value = false
-      // Recargar productos para mostrar stock actual
       todosLosProductos.value = await fetchProductosAdmin()
       return
     }
@@ -648,15 +707,12 @@ async function confirmarVenta() {
       total: Math.max(0, totalVenta.value)
     }
 
-    // ✅ Validación final
     if (cabecera.total < 0) {
       throw new Error('Error crítico: El total no puede ser negativo')
     }
 
-    // ✅ CREAR PEDIDO
     await crearPedido(cabecera, itemsVenta.value)
 
-    // Limpiar y recargar
     itemsVenta.value = []
     descuentoGeneral.tipo = null
     descuentoGeneral.valor = 0
@@ -759,6 +815,34 @@ async function cargarResumenHoy() {
   }
 }
 
+// ─── KPIs (NUEVO: solo presentación, deriva de resumenHoy) ───────
+const kpis = computed(() => [
+  {
+    label: 'Cobrado hoy',
+    value: `$${resumenHoy.cobrado.toLocaleString('es-AR')}`,
+    color: '#34d399',
+    icon: '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1M5.5 8l1.8 1.8L10.7 6"/></svg>'
+  },
+  {
+    label: 'Pendiente hoy',
+    value: `$${resumenHoy.pendiente.toLocaleString('es-AR')}`,
+    color: '#fbbf24',
+    icon: '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3.5a.5.5 0 0 1 .5.5v4l2.5 1.5a.5.5 0 1 1-.5.87L7.7 8.43A.5.5 0 0 1 7.5 8V4a.5.5 0 0 1 .5-.5"/><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1"/></svg>'
+  },
+  {
+    label: 'Ventas hoy',
+    value: resumenHoy.cantidad,
+    color: '#60a5fa',
+    icon: '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2 2 0 0 0-2 2v2H5V3a3 3 0 1 1 6 0v2h-1V3a2 2 0 0 0-2-2zM5 5H3.36a1.5 1.5 0 0 0-1.48 1.28L.85 13.13A2.5 2.5 0 0 0 3.32 16h9.36a2.5 2.5 0 0 0 2.47-2.87l-1.03-6.85A1.5 1.5 0 0 0 12.64 5H11v1.5a.5.5 0 0 1-1 0V5H6v1.5a.5.5 0 0 1-1 0V5z"/></svg>'
+  },
+  {
+    label: 'Total del día',
+    value: `$${resumenHoy.total.toLocaleString('es-AR')}`,
+    color: '#f472b6',
+    icon: '<svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.5H4A1.5 1.5 0 0 0 2.5 3v10A1.5 1.5 0 0 0 4 14.5h8a1.5 1.5 0 0 0 1.5-1.5V5.5L9.5 1.5z"/></svg>'
+  }
+])
+
 // ─── UTILIDADES ──────────────────────────────────────────────────
 function formatFecha(iso) {
   return new Date(iso).toLocaleString('es-AR', {
@@ -787,6 +871,15 @@ function mostrarToast(msg) {
   toastTimer = setTimeout(() => { toast.show = false }, 2500)
 }
 
+// ─── LIGHTBOX (NUEVO: visor de imagen, no afecta lógica de venta) ─
+const imagenZoom = ref(null) // { src, alt } | null
+function abrirZoom(src, alt) {
+  imagenZoom.value = { src, alt }
+}
+function cerrarZoom() {
+  imagenZoom.value = null
+}
+
 // ─── CICLO DE VIDA ───────────────────────────────────────────────
 async function cargarHistorial() {
   cargandoHistorial.value = true
@@ -803,13 +896,11 @@ async function cargarHistorial() {
   }
 }
 
-// ─── CARGAR PRODUCTOS AL MONTAR ─────────────────────────────────
 async function cargarProductosParaBusqueda() {
   try {
     const prods = await fetchProductosAdmin()
-    // fetchProductosAdmin devuelve un array directamente
     todosLosProductos.value = prods || []
-    
+
     if (import.meta.env.DEV) {
       console.log('✅ Productos cargados para búsqueda:', todosLosProductos.value.length)
     }
@@ -819,285 +910,514 @@ async function cargarProductosParaBusqueda() {
   }
 }
 
-// Y registra que se cargue al montar el componente
 onMounted(async () => {
   await cargarProductosParaBusqueda()
   await cargarResumenHoy()
+  // Auto-foco en el buscador (requisito POS: buscador destacado)
+  nextTick(() => searchInputRef.value?.focus())
 })
 </script>
 
 <style scoped>
-.cobr {
-  --rose:       #C9748A;
-  --rose-light: #F7E8ED;
-  --rose-dark:  #8B4A5C;
-  --cream:      #FFFAF9;
-  --charcoal:   #2D2D2D;
-  --mid:        #6B6B6B;
-  --border:     #EDE4E1;
-  --white:      #FFFFFF;
-  --radius:     10px;
-  --radius-sm:  6px;
-  --trans:      0.2s ease;
-
-  padding: 16px;
-  max-width: 860px;
-  margin: 0 auto;
+/* ═══════════════════════════════════════════════════════════
+   VARIABLES DE TEMA — POS oscuro con acento rose de marca
+═══════════════════════════════════════════════════════════ */
+.cobr-pos {
+  --rose: #C9748A;
+  --rose-dark: #8B4A5C;
+  --rose-light: rgba(201, 116, 138, 0.18);
+  --glass: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --radius: 14px;
+  --radius-sm: 9px;
   font-family: 'Poppins', system-ui, sans-serif;
-  color: var(--charcoal);
+  background: #0c0a0d;
 }
-@media (min-width: 640px) { .cobr { padding: 20px; } }
 
-/* HEADER */
-.cobr__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 16px;
+/* ── FONDO ANIMADO (mesh gradient) ── */
+.pos-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 15%, rgba(201, 116, 138, 0.28), transparent 60%),
+    radial-gradient(ellipse 55% 45% at 85% 20%, rgba(139, 74, 92, 0.24), transparent 60%),
+    radial-gradient(ellipse 60% 55% at 50% 100%, rgba(90, 40, 60, 0.3), transparent 65%),
+    linear-gradient(160deg, #100c10 0%, #150e13 45%, #0c0a0d 100%);
+  background-size: 200% 200%, 200% 200%, 200% 200%, 100% 100%;
+  animation: meshMove 18s ease-in-out infinite;
 }
-.cobr__title { font-size: 1.3rem; font-weight: 700; }
-.cobr__sub   { font-size: 13px; color: var(--mid); }
-.cobr__tabs  { display: flex; gap: 6px; }
-.cobr__tab   { padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--white); color: var(--mid); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all var(--trans); }
-.cobr__tab--active { background: var(--rose); color: white; border-color: var(--rose); }
+.pos-bg-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+@keyframes meshMove {
+  0%, 100% { background-position: 0% 0%, 100% 0%, 50% 100%, 0 0; }
+  50%      { background-position: 30% 30%, 70% 40%, 40% 70%, 0 0; }
+}
 
-/* VOLVER AL ADMIN */
-.cobr__back {
+/* ── ANIMACIONES DE ENTRADA ── */
+.animate-fade-up {
+  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-spin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TOP BAR ── */
+.back-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: var(--mid);
-  background: none;
-  border: none;
+  font-size: 13px;
+  color: rgba(255,255,255,0.55);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  padding: 7px 14px;
   cursor: pointer;
-  font-family: inherit;
-  margin-bottom: 12px;
-  padding: 0;
-  transition: color var(--trans);
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
 }
-.cobr__back:hover { color: var(--rose); }
+.back-btn:hover { color: white; border-color: rgba(255,255,255,0.2); transform: translateX(-2px); }
 
-/* RESUMEN */
-.resumen {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
-}
-@media (min-width: 640px) { .resumen { grid-template-columns: repeat(4, 1fr); gap: 10px; } }
-.resumen__card  { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 4px; }
-.resumen__label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--mid); }
-.resumen__value { font-size: 1.1rem; font-weight: 700; color: var(--charcoal); }
-@media (min-width: 640px) { .resumen__value { font-size: 1.3rem; } }
-.resumen__value--green  { color: #2E7D32; }
-.resumen__value--orange { color: #E65100; }
-.resumen__value--rose   { color: var(--rose-dark); }
-
-/* PANEL */
-.panel { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.panel__section { padding: 16px; border-bottom: 1px solid var(--border); }
-@media (min-width: 640px) { .panel__section { padding: 20px; } }
-.panel__section:last-child { border-bottom: none; }
-.panel__title { font-size: 12px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-
-/* BUSCADOR */
-.prod-search { position: relative; }
-.prod-search__input-wrap { position: relative; }
-.prod-search__icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; }
-.prod-search__input { width: 100%; padding: 10px 14px 10px 36px; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: inherit; color: var(--charcoal); transition: border var(--trans); }
-.prod-search__input:focus { outline: none; border-color: var(--rose); box-shadow: 0 0 0 3px rgba(201,116,138,0.1); }
-.prod-search__dropdown { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,0.1); z-index: 50; overflow: hidden; max-height: 320px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--rose-light) transparent; }
-.prod-search__dropdown::-webkit-scrollbar { width: 6px;}
-.prod-search__dropdown::-webkit-scrollbar-track { background: transparent;}
-.prod-search__dropdown::-webkit-scrollbar-thumb { background: var(--rose-light); border-radius: 3px;}
-.prod-search__dropdown::-webkit-scrollbar-thumb:hover { background: var(--rose);}
-.prod-search__item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F5EDE9; transition: background var(--trans); }
-.prod-search__item:last-child { border-bottom: none; }
-.prod-search__item:hover { background: var(--rose-light); }
-.prod-search__item--agotado { opacity: 0.5; cursor: not-allowed; }
-.prod-search__img { width: 36px; height: 36px; border-radius: var(--radius-sm); object-fit: cover; background: var(--rose-light); flex-shrink: 0; }
-.prod-search__info { flex: 1; min-width: 0; }
-.prod-search__nombre { display: block; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prod-search__precio { font-size: 12px; color: var(--rose-dark); font-weight: 600; }
-.prod-search__stock { font-size: 11px; color: var(--mid); white-space: nowrap; }
-.prod-search__stock--bajo { color: #E65100; font-weight: 600; }
-.prod-search__empty { padding: 10px 14px; font-size: 13px; color: var(--mid); }
-
-/* ITEMS DE VENTA */
-.venta-empty { text-align: center; padding: 24px; color: var(--mid); font-size: 14px; }
-.venta-empty span { font-size: 28px; display: block; margin-bottom: 8px; }
-
-.venta-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 0; border-bottom: 1px solid #F5EDE9; }
-.venta-item:last-of-type { border-bottom: none; }
-.venta-item__img { width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover; background: var(--rose-light); flex-shrink: 0; }
-.venta-item__info { flex: 1; min-width: 0; }
-.venta-item__nombre { display: block; font-size: 13px; font-weight: 500; }
-.venta-item__precio { font-size: 11px; color: var(--mid); }
-.venta-item__qty { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.venta-item__subtotal { font-size: 13px; font-weight: 700; color: var(--rose-dark); min-width: 70px; text-align: right; flex-shrink: 0; }
-@media (max-width: 480px) { .venta-item__subtotal { min-width: 60px; font-size: 12px; } }
-.venta-item__remove { background: none; border: none; color: #ddd; cursor: pointer; font-size: 14px; padding: 4px; transition: color var(--trans); flex-shrink: 0; }
-.venta-item__remove:hover { color: var(--rose); }
-
-/* DESCUENTOS */
-.item-descuento { display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
-.item-descuento__select { padding: 3px 6px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-family: inherit; color: var(--charcoal); background: var(--white); cursor: pointer; }
-.item-descuento__input { width: 60px; padding: 3px 6px; border: 1.5px solid var(--rose); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; color: var(--charcoal); }
-.item-descuento__input:focus { outline: none; }
-.item-descuento__badge { font-size: 11px; font-weight: 600; color: #2E7D32; background: #E8F5E8; padding: 2px 6px; border-radius: 10px; }
-
-/* FORMULARIO */
-.form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
-@media (min-width: 540px) { .form-grid { grid-template-columns: 1fr 1fr; } }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-group--full { grid-column: 1 / -1; }
-.form-group label { font-size: 10px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; }
-.form-group input, .form-group select { padding: 8px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; color: var(--charcoal); background: var(--white); transition: border var(--trans); }
-.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--rose); }
-
-.btn-confirmar { width: 100%; padding: 12px; background: var(--rose); color: white; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background var(--trans); }
-.btn-confirmar:hover:not(:disabled) { background: var(--rose-dark); }
-.btn-confirmar:disabled { background: #ccc; cursor: not-allowed; }
-
-/* HISTORIAL */
-.historial-filtros { display: flex; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-.filtro-select { flex: 1; min-width: 130px; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; color: var(--charcoal); background: var(--white); cursor: pointer; }
-.historial { padding: 10px 14px; }
-@media (min-width: 640px) { .historial { padding: 12px 20px; } }
-
-.historial-item { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; transition: border-color var(--trans); }
-.historial-item--expandido { border-color: var(--rose); }
-.historial-item__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; background: var(--white); transition: background var(--trans); gap: 8px; }
-.historial-item__head:hover { background: var(--rose-light); }
-.historial-item__info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
-.historial-item__id       { font-size: 12px; font-weight: 700; color: var(--rose-dark); flex-shrink: 0; }
-.historial-item__fecha    { font-size: 11px; color: var(--mid); }
-.historial-item__cliente  { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.historial-item__right    { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.historial-item__total    { font-size: 13px; font-weight: 700; }
-.historial-item__arrow    { font-size: 10px; color: var(--mid); }
-
-.estado-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: capitalize; white-space: nowrap; }
-.estado-badge--pagado    { background: #E8F5E8; color: #2E7D32; }
-.estado-badge--pendiente { background: #FFF8E1; color: #E65100; }
-.estado-badge--señado    { background: #E3F2FD; color: #1565C0; }
-
-.historial-item__detalle { background: #FAFAFA; border-top: 1px solid var(--border); }
-.detalle-items { padding: 10px 14px; }
-.detalle-item { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 6px 0; font-size: 12px; border-bottom: 1px solid #F0E8E5; }
-.detalle-item:last-child { border-bottom: none; }
-.detalle-item__nombre { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.detalle-item__qty    { color: var(--mid); white-space: nowrap; }
-.detalle-item__precio { color: var(--mid); white-space: nowrap; }
-.detalle-item__sub    { font-weight: 700; color: var(--rose-dark); white-space: nowrap; }
-.detalle-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
-.detalle-meta { display: flex; gap: 12px; font-size: 12px; color: var(--mid); flex-wrap: wrap; }
-.detalle-acciones { display: flex; gap: 8px; align-items: center; }
-.estado-select { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; cursor: pointer; }
-.metodo-select { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; cursor: pointer; }
-.btn-anular { padding: 5px 10px; background: none; border: 1.5px solid #EEE; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-family: inherit; color: var(--mid); transition: all var(--trans); }
-.btn-anular:hover { border-color: var(--rose); color: var(--rose); }
-
-/* QTY */
-.qty-btn { width: 22px; height: 22px; border-radius: 50%; background: var(--rose-light); color: var(--rose-dark); border: none; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; transition: background var(--trans); }
-.qty-btn:hover:not(:disabled) { background: var(--rose); color: white; }
-.qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.qty-num { font-size: 13px; font-weight: 600; min-width: 16px; text-align: center; }
-
-/* LOADING */
-.estado-carga { display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 12px; color: var(--mid); font-size: 14px; }
-.spinner { width: 30px; height: 30px; border: 3px solid var(--rose-light); border-top-color: var(--rose); border-radius: 50%; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* TOAST */
-.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--charcoal); color: white; padding: 10px 18px; border-radius: 50px; font-size: 13px; z-index: 999; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.2); pointer-events: none; }
-.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
-.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
-/* ═══════════════════════════════════════════════════════════
-   CARRITO FLOTANTE - Resumen único de totales
-═══════════════════════════════════════════════════════════ */
-.carrito-flotante {
-  background: linear-gradient(135deg, var(--rose-light) 0%, rgba(201, 116, 138, 0.08) 100%);
-  border: 2px solid var(--rose);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin: 16px 0;
-  border-left: 6px solid var(--rose-dark);
-  backdrop-filter: blur(4px);
-}
-
-.carrito-flotante__row {
+.segmented {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  font-size: 14px;
-  color: var(--charcoal);
-  font-weight: 500;
-  border-bottom: 1px solid rgba(201, 116, 138, 0.2);
+  gap: 2px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 50px;
+  padding: 3px;
+  backdrop-filter: blur(8px);
 }
-
-.carrito-flotante__row:last-child {
-  border-bottom: none;
-}
-
-.carrito-flotante__label {
+.segmented__btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
-}
-
-.carrito-flotante__value {
-  font-weight: 700;
-  text-align: right;
-  color: var(--charcoal);
-}
-
-.carrito-flotante__row--descuento {
-  color: #2E7D32;
-}
-
-.carrito-flotante__row--descuento .carrito-flotante__value {
-  color: #2E7D32;
-  font-weight: 700;
-}
-
-.carrito-flotante__row--total {
-  background: rgba(201, 116, 138, 0.15);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  margin: 8px 0;
+  padding: 7px 16px;
+  border-radius: 50px;
   border: none;
-  font-size: 16px;
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.segmented__btn--active {
+  background: linear-gradient(135deg, var(--rose), var(--rose-dark));
+  color: white;
+  box-shadow: 0 4px 14px rgba(201, 116, 138, 0.35);
+}
+.segmented__btn:not(.segmented__btn--active):hover { color: white; }
+
+/* ── KPI CARDS ── */
+.kpi-card {
+  position: relative;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, var(--accent), transparent 65%);
+  opacity: 0.12;
+  transition: opacity 0.25s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--glass-border));
+  box-shadow: 0 10px 30px -8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.kpi-card:hover::before { opacity: 0.22; }
+.kpi-card__icon {
+  color: var(--accent);
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 8px;
+  z-index: 1;
+}
+.kpi-card__label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: rgba(255,255,255,0.45); z-index: 1; }
+.kpi-card__value { font-size: 1.35rem; font-weight: 800; color: white; z-index: 1; }
+
+/* ── GLASS PANELS ── */
+.glass-panel {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.glass-panel--accent {
+  border-color: rgba(201, 116, 138, 0.35);
+  box-shadow: 0 8px 32px rgba(201, 116, 138, 0.12);
+}
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 14px;
+}
+.panel-title__num {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--rose);
+  color: white;
+  font-size: 11px;
   font-weight: 800;
-  color: var(--rose-dark);
 }
 
-.carrito-flotante__value--total {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--rose-dark);
-  text-align: right;
+/* ── FORM FIELDS ── */
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+.pos-input {
+  padding: 9px 12px;
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.04);
+  color: white;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+.pos-input::placeholder { color: rgba(255,255,255,0.25); }
+.pos-input:focus {
+  outline: none;
+  border-color: var(--rose);
+  background: rgba(255,255,255,0.07);
+  box-shadow: 0 0 0 3px rgba(201, 116, 138, 0.18);
+}
+.pos-select { cursor: pointer; }
+.pos-select option { background: #1a1418; color: white; }
 
-/* Responsive */
+/* ── BADGE MÉTODO DE PAGO ── */
+.metodo-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 50px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.metodo-badge--efectivo      { color: #34d399; border-color: rgba(52,211,153,0.35); background: rgba(52,211,153,0.1); }
+.metodo-badge--transferencia { color: #60a5fa; border-color: rgba(96,165,250,0.35); background: rgba(96,165,250,0.1); }
+.metodo-badge--mercado_pago  { color: #38bdf8; border-color: rgba(56,189,248,0.35); background: rgba(56,189,248,0.1); }
+.metodo-badge--debito,
+.metodo-badge--credito       { color: #f472b6; border-color: rgba(244,114,182,0.35); background: rgba(244,114,182,0.1); }
+
+/* ── BUSCADOR ── */
+.prod-search { position: relative; }
+.prod-search__input-wrap { position: relative; }
+.prod-search__icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.35); pointer-events: none; }
+.prod-search__input {
+  width: 100%;
+  padding: 12px 14px 12px 38px;
+  border: 1.5px solid var(--glass-border);
+  border-radius: 50px;
+  background: rgba(255,255,255,0.05);
+  color: white;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+.prod-search__input::placeholder { color: rgba(255,255,255,0.3); }
+.prod-search__input:focus {
+  outline: none;
+  border-color: var(--rose);
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 4px rgba(201,116,138,0.15);
+}
+.prod-search__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0; right: 0;
+  background: #17111a;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+  z-index: 50;
+  overflow: hidden;
+  max-height: 340px;
+  overflow-y: auto;
+  animation: fadeUp 0.2s ease both;
+}
+.prod-search__item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s ease; }
+.prod-search__item:last-child { border-bottom: none; }
+.prod-search__item:hover { background: rgba(201,116,138,0.12); }
+.prod-search__item--agotado { opacity: 0.45; cursor: not-allowed; }
+.prod-search__img { width: 38px; height: 38px; border-radius: var(--radius-sm); object-fit: cover; background: rgba(255,255,255,0.05); flex-shrink: 0; }
+.prod-search__info { flex: 1; min-width: 0; }
+.prod-search__nombre { display: block; font-size: 13px; font-weight: 500; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-search__precio { font-size: 12px; color: var(--rose); font-weight: 600; }
+.prod-search__empty { padding: 12px 16px; font-size: 13px; color: rgba(255,255,255,0.35); }
+
+/* Preview flotante al hacer hover sobre la miniatura */
+.img-preview {
+  position: absolute;
+  left: 50px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.9);
+  width: 130px; height: 130px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--rose);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 60;
+  background: #17111a;
+}
+.img-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.stock-chip { font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.4); white-space: nowrap; }
+.stock-chip--bajo { color: #fbbf24; }
+.stock-chip--off { color: #f87171; }
+
+/* ── ITEMS DE LA VENTA ── */
+.venta-empty { text-align: center; padding: 30px; color: rgba(255,255,255,0.35); font-size: 13px; }
+.venta-empty span { font-size: 30px; display: block; margin-bottom: 8px; }
+
+.venta-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s ease;
+}
+.venta-item:hover { border-color: rgba(201,116,138,0.3); }
+
+.venta-item__img-btn {
+  position: relative;
+  width: 46px; height: 46px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: none;
+  padding: 0;
+  cursor: zoom-in;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+}
+.venta-item__img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s ease; }
+.venta-item__zoom-hint {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  font-size: 14px;
+  transition: opacity 0.2s ease;
+}
+.venta-item__img-btn:hover .venta-item__zoom-hint { opacity: 1; }
+.venta-item__img-btn:hover .venta-item__img { transform: scale(1.08); }
+
+.venta-item__info { flex: 1; min-width: 0; }
+.venta-item__nombre { display: block; font-size: 13px; font-weight: 500; color: white; }
+.venta-item__precio { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+.item-descuento { display: flex; align-items: center; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+.item-descuento__select { padding: 3px 6px; border: 1.5px solid var(--glass-border); border-radius: 6px; font-size: 11px; font-family: inherit; color: white; background: #1a1418; cursor: pointer; }
+.item-descuento__input { width: 60px; padding: 3px 6px; border: 1.5px solid var(--rose); border-radius: 6px; font-size: 12px; font-family: inherit; background: rgba(255,255,255,0.05); color: white; }
+.item-descuento__input:focus { outline: none; }
+.item-descuento__badge { font-size: 11px; font-weight: 700; color: #34d399; background: rgba(52,211,153,0.12); padding: 2px 7px; border-radius: 10px; }
+
+.venta-item__qty { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.qty-btn {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  color: white;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
+}
+.qty-btn:hover:not(:disabled) { background: var(--rose); border-color: var(--rose); }
+.qty-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.qty-num { font-size: 13px; font-weight: 700; min-width: 18px; text-align: center; color: white; }
+
+.venta-item__subtotal { font-size: 13px; font-weight: 700; color: var(--rose); min-width: 68px; text-align: right; flex-shrink: 0; }
+.venta-item__remove { background: none; border: none; color: rgba(255,255,255,0.25); cursor: pointer; font-size: 14px; padding: 2px; transition: color 0.2s ease; flex-shrink: 0; }
+.venta-item__remove:hover { color: #f87171; }
+
+.item-list-enter-active, .item-list-leave-active { transition: all 0.25s ease; }
+.item-list-enter-from { opacity: 0; transform: translateX(-10px); }
+.item-list-leave-to { opacity: 0; transform: translateX(10px); }
+
+/* ── DESCUENTO GENERAL Y TOTALES ── */
+.descuento-general {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px dashed rgba(201,116,138,0.4);
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+.descuento-general__label { font-size: 12.5px; font-weight: 600; color: white; }
+.descuento-general__controles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.totales { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.totales__row { display: flex; justify-content: space-between; font-size: 13px; color: rgba(255,255,255,0.55); }
+.totales__row strong { color: white; font-weight: 600; }
+.totales__row--desc strong,
+.totales__row--desc span { color: #34d399; }
+
+.total-final {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(201,116,138,0.18), rgba(139,74,92,0.1));
+  border: 1px solid rgba(201,116,138,0.35);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 6px 0 16px;
+}
+.total-final span { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.55); }
+.total-final strong { font-size: 1.7rem; font-weight: 800; color: white; }
+
+.btn-confirmar {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--rose), var(--rose-dark));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 8px 24px rgba(201,116,138,0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-confirmar:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(201,116,138,0.4); }
+.btn-confirmar:active:not(:disabled) { transform: translateY(0); }
+.btn-confirmar:disabled { background: rgba(255,255,255,0.1); box-shadow: none; cursor: not-allowed; }
+
+/* ── HISTORIAL ── */
+.historial-filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.historial-filtros .pos-select { flex: 1; min-width: 150px; }
+
+.historial-item {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: rgba(255,255,255,0.02);
+  transition: border-color 0.2s ease;
+}
+.historial-item--expandido { border-color: var(--rose); }
+.historial-item__head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; gap: 8px; transition: background 0.15s ease; }
+.historial-item__head:hover { background: rgba(201,116,138,0.08); }
+.historial-item__info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.historial-item__id { font-size: 12px; font-weight: 700; color: var(--rose); flex-shrink: 0; }
+.historial-item__fecha { font-size: 11px; color: rgba(255,255,255,0.4); }
+.historial-item__cliente { font-size: 12.5px; font-weight: 500; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historial-item__right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.historial-item__total { font-size: 13.5px; font-weight: 700; color: white; }
+.historial-item__arrow { font-size: 10px; color: rgba(255,255,255,0.35); }
+
+.estado-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 50px; text-transform: capitalize; white-space: nowrap; border: 1px solid transparent; }
+.estado-badge--pagado    { background: rgba(52,211,153,0.14); color: #34d399; border-color: rgba(52,211,153,0.3); }
+.estado-badge--pendiente { background: rgba(251,191,36,0.14); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+.estado-badge--señado    { background: rgba(96,165,250,0.14); color: #60a5fa; border-color: rgba(96,165,250,0.3); }
+
+.historial-item__detalle { background: rgba(0,0,0,0.2); border-top: 1px solid var(--glass-border); }
+.detalle-items { padding: 10px 14px; }
+.detalle-item { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 7px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); }
+.detalle-item:last-child { border-bottom: none; }
+.detalle-item__nombre { font-weight: 500; color: white; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detalle-item__sub { font-weight: 700; color: var(--rose); white-space: nowrap; }
+.detalle-footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-top: 1px solid var(--glass-border); flex-wrap: wrap; gap: 8px; }
+.detalle-meta { display: flex; gap: 14px; font-size: 12px; color: rgba(255,255,255,0.45); flex-wrap: wrap; }
+.detalle-acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.estado-select, .metodo-select {
+  padding: 6px 8px; border: 1.5px solid var(--glass-border); border-radius: 6px;
+  font-size: 12px; font-family: inherit; cursor: pointer; background: #1a1418; color: white;
+}
+.btn-anular { padding: 6px 12px; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; color: #f87171; transition: all 0.2s ease; }
+.btn-anular:hover { background: rgba(248,113,113,0.2); }
+
+.expand-enter-active, .expand-leave-active { transition: all 0.25s ease; overflow: hidden; }
+.expand-enter-from, .expand-leave-to { opacity: 0; max-height: 0; }
+.expand-enter-to, .expand-leave-from { opacity: 1; max-height: 600px; }
+
+/* ── LOADING ── */
+.estado-carga { display: flex; flex-direction: column; align-items: center; padding: 50px; gap: 12px; color: rgba(255,255,255,0.4); font-size: 14px; }
+.spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--rose); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(20,15,18,0.95);
+  border: 1px solid var(--glass-border);
+  color: white; padding: 11px 22px; border-radius: 50px; font-size: 13px;
+  z-index: 999; white-space: nowrap;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
+
+/* ── LIGHTBOX ── */
+.zoom-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.9);
+  backdrop-filter: blur(8px);
+  z-index: 400;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px;
+  cursor: zoom-out;
+}
+.zoom-img { max-width: 90%; max-height: 78vh; border-radius: 14px; object-fit: contain; box-shadow: 0 30px 80px rgba(0,0,0,0.6); cursor: default; }
+.zoom-caption { margin-top: 14px; color: rgba(255,255,255,0.7); font-size: 13px; }
+.zoom-close {
+  position: absolute; top: 20px; right: 20px;
+  width: 38px; height: 38px;
+  background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border);
+  border-radius: 50%; color: white; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s ease;
+}
+.zoom-close:hover { background: rgba(255,255,255,0.2); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
 @media (max-width: 480px) {
-  .carrito-flotante {
-    padding: 14px;
-    margin: 14px 0;
-  }
-  
-  .carrito-flotante__row {
-    font-size: 13px;
-    padding: 7px 0;
-  }
-  
-  .carrito-flotante__value--total {
-    font-size: 20px;
-  }
+  .kpi-card__value { font-size: 1.1rem; }
+  .total-final strong { font-size: 1.4rem; }
 }
 </style>
