@@ -144,24 +144,44 @@
                 <div
                   v-for="p in productosBuscados"
                   :key="p.id"
-                  class="prod-search__item group"
-                  :class="{ 'prod-search__item--agotado': p.stock <= 0 }"
-                  @mousedown.prevent="seleccionarProducto(p)"
+                  class="prod-search__item"
+                  :class="{ 'prod-search__item--agotado': p.stock <= 0, 'prod-search__item--expandido': productoVariantesActivo?.id === p.id }"
                 >
-                  <!-- Thumbnail con preview hover -->
-                  <div class="relative">
-                    <img :src="p.imagen_url" :alt="p.nombre" class="prod-search__img" />
-                    <div class="img-preview group-hover:opacity-100 group-hover:scale-100">
-                      <img :src="p.imagen_url" :alt="p.nombre" />
-                    </div>
-                  </div>
-                  <div class="prod-search__info">
-                    <span class="prod-search__nombre">{{ p.nombre }}</span>
-                    <span class="prod-search__precio">${{ p.precio.toLocaleString('es-AR') }}</span>
-                  </div>
-                  <span class="stock-chip" :class="{ 'stock-chip--bajo': p.stock <= 3 && p.stock > 0, 'stock-chip--off': p.stock <= 0 }">
-                    {{ p.stock > 0 ? `Stock: ${p.stock}` : 'Sin stock' }}
-                  </span>
+                 <!-- Fila normal: click para agregar (o abrir selector de variante) -->
+                 <div
+                   v-if="productoVariantesActivo?.id !== p.id"
+                   class="prod-search__row"
+                   @mousedown.prevent="onClickProducto(p)"
+                 >
+                   <!-- Thumbnail: el preview flotante ahora se dispara por JS (ver punto 3) -->
+                   <div class="relative" @mouseenter="mostrarPreview($event, p)" @mouseleave="ocultarPreview">
+                     <img :src="p.imagen_url" :alt="p.nombre" class="prod-search__img" />
+                   </div>
+                   <div class="prod-search__info">
+                     <span class="prod-search__nombre">{{ p.nombre }}</span>
+                     <span class="prod-search__precio">${{ p.precio.toLocaleString('es-AR') }}</span>
+                     <span v-if="tieneVariantes(p)" class="prod-search__variantes-hint">🌸 {{ variantesDe(p).length }} opciones</span>
+                   </div>
+                   <span class="stock-chip" :class="{ 'stock-chip--bajo': p.stock <= 3 && p.stock > 0, 'stock-chip--off': p.stock <= 0 }">
+                     {{ p.stock > 0 ? `Stock: ${p.stock}` : 'Sin stock' }}
+                   </span>
+                 </div>
+
+                 <!-- Selector de variante inline -->
+                 <div v-else class="variante-selector">
+                   <div class="variante-selector__head">
+                     <span class="variante-selector__title">{{ p.nombre }} — elegí una variante</span>
+                     <button class="variante-selector__cancel" @mousedown.prevent="productoVariantesActivo = null">✕</button>
+                   </div>
+                   <div class="variante-selector__chips">
+                     <button
+                       v-for="v in variantesDe(p)"
+                       :key="v"
+                       class="variante-chip"
+                       @mousedown.prevent="agregarConVariante(p, v)"
+                     >{{ v }}</button>
+                   </div>
+                 </div> 
                 </div>
               </div>
 
@@ -419,6 +439,17 @@
     <transition name="toast">
       <div v-if="toast.show" class="toast">{{ toast.msg }}</div>
     </transition>
+    
+    <!-- PREVIEW FLOTANTE DE IMAGEN (buscador) -->
+    <Teleport to="body">
+      <div
+        v-if="previewImg.show"
+        class="img-preview-float"
+        :style="{ top: previewImg.top + 'px', left: previewImg.left + 'px' }"
+      >
+        <img :src="previewImg.src" :alt="previewImg.alt" />
+      </div>
+    </Teleport>
 
     <!-- ══════════════════════════════════════
          LIGHTBOX / ZOOM DE IMAGEN
@@ -491,7 +522,7 @@ const todosLosProductos = ref([])
 const busquedaProd = ref('')
 const searchAbierto = ref(false)
 const searchInputRef = ref(null) // ← NUEVO: para auto-foco
-
+const productoVariantesActivo = ref(null)
 // ─── CARRITO ───────────────────────────────────────────────────
 const {
   carrito: carritoInterno,
@@ -509,10 +540,15 @@ const productosBuscados = computed(() => {
 
 function filtrarProductos() {
   searchAbierto.value = true
+  productoVariantesActivo.value = null
 }
 
 function cerrarSearchConRetraso() {
-  setTimeout(() => { searchAbierto.value = false }, 200)
+  setTimeout(() => {
+    searchAbierto.value = false
+    productoVariantesActivo.value = null
+    ocultarPreview()
+  }, 200)
 }
 
 // ✅ Si el producto tiene variantes, abrir selector
@@ -551,6 +587,81 @@ function seleccionarProducto(p) {
 
   busquedaProd.value = ''
   searchAbierto.value = false
+}
+function tieneVariantes(p) {
+  return !!(p.variantes && p.variantes.trim() !== '')
+}
+
+function variantesDe(p) {
+  return (p.variantes || '').split(',').map(v => v.trim()).filter(Boolean)
+}
+
+function onClickProducto(p) {
+  ocultarPreview()
+  if (p.stock <= 0) {
+    mostrarToast('⚠️ Este producto no tiene stock')
+    return
+  }
+  if (tieneVariantes(p)) {
+    productoVariantesActivo.value = p
+    return
+  }
+  seleccionarProducto(p)
+}
+
+function agregarConVariante(p, variante) {
+  const existe = itemsVenta.value.find(i => i.producto_id === p.id && i.variante === variante)
+  if (existe) {
+    if (existe.cantidad >= existe.stock) {
+      mostrarToast('⚠️ No hay más stock disponible')
+      return
+    }
+    existe.cantidad++
+    recalcularItem(existe)
+  } else {
+    itemsVenta.value.push({
+      producto_id: p.id,
+      nombre: `${p.nombre} (${variante})`,
+      imagen_url: p.imagen_url,
+      precio_unit: p.precio,
+      cantidad: 1,
+      subtotal: p.precio,
+      stock: p.stock,
+      variante: variante,
+      descuento_tipo: null,
+      descuento_valor: 0,
+      descuento_monto: 0
+    })
+  }
+  productoVariantesActivo.value = null
+  busquedaProd.value = ''
+  searchAbierto.value = false
+}
+
+// ─── PREVIEW FLOTANTE DE IMAGEN (NUEVO) ───────────────────────────
+const previewImg = reactive({ show: false, src: '', alt: '', top: 0, left: 0 })
+
+function mostrarPreview(evento, producto) {
+  const rect = evento.currentTarget.getBoundingClientRect()
+  const ancho = 150, alto = 150
+
+  let left = rect.right + 12
+  if (left + ancho > window.innerWidth - 10) {
+    left = rect.left - ancho - 12 // si no entra a la derecha, la mostramos a la izquierda
+  }
+
+  let top = rect.top + rect.height / 2 - alto / 2
+  top = Math.max(10, Math.min(top, window.innerHeight - alto - 10)) // clamp vertical
+
+  previewImg.src = producto.imagen_url
+  previewImg.alt = producto.nombre
+  previewImg.left = left
+  previewImg.top = top
+  previewImg.show = true
+}
+
+function ocultarPreview() {
+  previewImg.show = false
 }
 
 // ─── DESCUENTOS ──────────────────────────────────────────────────
@@ -788,7 +899,7 @@ async function anular(pedido) {
         await anularPedido(pedido)
         pedidos.value = pedidos.value.filter(p => p.id !== pedido.id)
         await cargarResumenHoy()
-        todosLosProductos.value = await fetchProductos()
+        todosLosProductos.value = await fetchProductosAdmin()
         confirmDialog.isVisible = false
         mostrarToast('✅ Venta anulada y stock recuperado')
       } catch (e) {
@@ -1166,34 +1277,44 @@ onMounted(async () => {
   overflow-y: auto;
   animation: fadeUp 0.2s ease both;
 }
-.prod-search__item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s ease; }
+.prod-search__item { border-bottom: 1px solid rgba(255,255,255,0.05); }
 .prod-search__item:last-child { border-bottom: none; }
-.prod-search__item:hover { background: rgba(201,116,138,0.12); }
-.prod-search__item--agotado { opacity: 0.45; cursor: not-allowed; }
+.prod-search__row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; transition: background 0.15s ease; }
+.prod-search__row:hover { background: rgba(201,116,138,0.12); }
+.prod-search__item--agotado .prod-search__row { opacity: 0.45; cursor: not-allowed; }
 .prod-search__img { width: 38px; height: 38px; border-radius: var(--radius-sm); object-fit: cover; background: rgba(255,255,255,0.05); flex-shrink: 0; }
 .prod-search__info { flex: 1; min-width: 0; }
 .prod-search__nombre { display: block; font-size: 13px; font-weight: 500; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prod-search__precio { font-size: 12px; color: var(--rose); font-weight: 600; }
 .prod-search__empty { padding: 12px 16px; font-size: 13px; color: rgba(255,255,255,0.35); }
-
+.prod-search__variantes-hint { font-size: 10.5px; color: var(--rose); font-weight: 600; margin-top: 1px; }
+.prod-search__item--expandido { background: rgba(201,116,138,0.08); }
+.variante-selector { padding: 10px 14px; }
+.variante-selector__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.variante-selector__title { font-size: 12.5px; font-weight: 600; color: white; }
+.variante-selector__cancel { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 13px; padding: 2px 6px; transition: color 0.15s ease; }
+.variante-selector__cancel:hover { color: #f87171; }
+.variante-selector__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.variante-chip {
+  padding: 6px 12px; border-radius: 50px; border: 1.5px solid var(--rose);
+  background: rgba(201,116,138,0.12); color: white; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all 0.15s ease;
+}
+.variante-chip:hover { background: var(--rose); transform: translateY(-1px); }
 /* Preview flotante al hacer hover sobre la miniatura */
-.img-preview {
-  position: absolute;
-  left: 50px;
-  top: 50%;
-  transform: translateY(-50%) scale(0.9);
-  width: 130px; height: 130px;
+.img-preview-float {
+  position: fixed;
+  width: 150px; height: 150px;
   border-radius: 10px;
   overflow: hidden;
   border: 2px solid var(--rose);
   box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-  opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  z-index: 60;
+  z-index: 9999;
   background: #17111a;
+  animation: fadeUp 0.12s ease both;
 }
-.img-preview img { width: 100%; height: 100%; object-fit: cover; }
+.img-preview-float img { width: 100%; height: 100%; object-fit: cover; }
 
 .stock-chip { font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.4); white-space: nowrap; }
 .stock-chip--bajo { color: #fbbf24; }
